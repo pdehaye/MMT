@@ -20,6 +20,7 @@ classical logic.
 | `Judgment.lean` | Flat signatures, judgments, abstract `Foundation`, derivability, well-typed morphisms, **judgment preservation**, category of theories | `api/checking/{Rules,Solver}.scala`, `api/objects/Judgements.scala` |
 | `LF.lean` | LF as a concrete foundation, with proofs that its rules are stable under translation and context extension | `mmt-lf` |
 | `Modules.lean` | Theories with meta-theories and includes, libraries, visibility, flattening, views, view checking | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
+| `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
 | `Example.lean` | Worked example: the view `Magma → NatArith` over LF, checked and used to transport a typing derivation | — |
 
 ## Main results
@@ -36,6 +37,14 @@ classical logic.
   applies to all LF-based theories.
 * `Visible.isMorphism`: include and meta-theory paths are morphisms between flattenings.
 * `View.isMorphism_of_check`: it is enough to check a view's assignments locally.
+* `pushout_isMorphism`, `pushout_incl`, `pushout_commutes`: the pushout square of
+  well-typed morphisms. `σ' : S' → T'` is well-typed, `T ⊆ T'`, and `σ'` agrees with
+  `σ` on `S`.
+* `pushout_universal`: every cocone `τ : T → U`, `μ : S' → U` with `μ|S = σ;τ` that
+  respects the assignments factors through a well-typed mediating morphism `T' → U`.
+  That morphism is unique on the constants of `T'`.
+* `Structure.isMorphism`, `Structure.preserves`: an MMT structure `s : S` in `T` induces a
+  well-typed morphism `S → T'`. Every judgment of `S` holds in `T'` after renaming.
 * `Example.natArith_plus_xx`: derives `x : N ⊢ plus x x : N` from
   `x : U ⊢ op x x : U` by applying the preservation theorem to the view.
 
@@ -53,6 +62,14 @@ classical logic.
   rule `c : A` and the definition rule `c ≡ d : A`.
 * Global names are qualified by their home theory. So flattening is a lookup filtered by
   visibility and needs no renaming.
-* Not yet covered: structures with assignments and their pushouts, partial views,
-  the diagram operators (`modules/diagrams`), and the soundness of MMT's checking
-  algorithm (`Solver`) with respect to the declarative judgments formalized here.
+* Pushouts and structures are built on flat signatures. The fresh names (MMT's
+  `T?s/c`) come from an abstract injective `Renaming`. Assignments may only define
+  copied constants that have no definiens. The universal property assumes that the
+  host and the extension are closed, i.e. their declarations refer only to their own
+  constants.
+* Not yet covered:
+  * structures as declarations inside the `Library`/`flat` layer of `Modules.lean`;
+  * partial views;
+  * the remaining diagram operators (`modules/diagrams`);
+  * the soundness of MMT's checking algorithm (`Solver`) with respect to the
+    declarative judgments formalized here.
