@@ -8,3 +8,4 @@ import MMTFormal.Example
 import MMTFormal.StructurePushout
 import MMTFormal.PartialView
 import MMTFormal.Diagrams
+import MMTFormal.Checker

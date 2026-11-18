@@ -22,7 +22,10 @@ classical logic.
 | `Modules.lean` | Theories with meta-theories, includes and structure declarations; libraries, visibility, flattening (including structure copies), views, view checking, structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
 | `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
 | `StructurePushout.lean` | Flattening a theory with a structure declaration is the pushout of `Pushout.lean`, and the structure morphism is the pushout morphism | `api/symbols/Structure.scala` |
-| `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, and `Bimagma` with two structures `add, mul : Magma`. Each is checked and used to transport a typing derivation | — |
+| `PartialView.lean` | Partial morphisms and partial translation, preservation on the domain of definition, totality, composition, partial views in the module system | `api/modules/View.scala` (partial views) |
+| `Diagrams.lean` | Diagrams; linear functors given by systematic renaming, with functor laws; connectors and naturality; sequencing, union, and connecting a diagram to its image | `api/modules/diagrams/{Diagram,LinearFunctor,LinearConnector,MetaOperators}.scala`, `SystematicRenamer` |
+| `Checker.lean` | An executable type checker for LF (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer, hence is sound by construction | `api/checking/{Solver,Rules}.scala`, `mmt-lf` rules |
+| `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, `Bimagma` with two structures `add, mul : Magma`, and runs of the checker. Each is checked and used to transport a typing derivation | — |
 
 ## Main results
 
@@ -59,6 +62,29 @@ classical logic.
   `x : U ⊢ op x x : U` by applying the preservation theorem to the view.
 * `Example.bimagma_addop_xx`: the same derivation, transported along the structure
   `add`, gives `x : add/U ⊢ add/op x x : add/U` in `Bimagma`.
+* Partial views:
+  * `Term.ptrans_eq_some_iff`: partial translation is defined exactly on terms built
+    from defined constants, and then equals the total translation;
+  * `IsPartialMorphism.preserves`, `typing_ptrans`: judgments over the domain of
+    definition are preserved;
+  * `IsPartialMorphism.total_of_cover`, `of_total`: total and partial morphisms;
+  * `IsPartialMorphism.comp`: partial morphisms compose;
+  * `View.toPartial_total`, `View.WellTyped.toPartial`: module-level partial views.
+* Diagram operators:
+  * `LinFunctor.mor_isMorphism`: linear functors map well-typed morphisms to well-typed
+    morphisms;
+  * `LinFunctor.mor_id`, `LinFunctor.mor_comp`: the functor laws, as equations;
+  * `LinFunctor.unit_isMorphism`, `LinFunctor.naturality`: the connector `S → F(S)` is
+    a natural transformation;
+  * `LinFunctor.comp_obj`, `comp_mor`: sequencing functors gives a functor;
+  * `Diagram.map_wf`, `union_wf`, `connect_wf`: the operators preserve
+    well-formedness of diagrams;
+  * `Diagram.map_commutes`: they preserve commuting squares.
+* Checker:
+  * `LF.Checker.check_sound`, `eq_sound`: whatever the checker accepts is derivable;
+  * `Example.check_conv`, `check_beta`, `reject_op_x`: runs of the checker, evaluated
+    by `decide` in the kernel. They cover conversion via a definition, β-equality,
+    and the rejection of an ill-typed term.
 
 ## Modelling choices and scope
 
@@ -84,8 +110,22 @@ classical logic.
   copied constants that have no definiens. The universal property assumes that the
   host and the extension are closed, i.e. their declarations refer only to their own
   constants.
+* A partial morphism is modelled as a total morphism out of its domain of definition.
+  Judgments over the whole domain are not preserved in general, because their
+  derivations may use undefined constants. MMT's option of expanding the definition
+  of an unassigned defined constant is not modelled.
+* Linear functors are modelled as systematic renamings. Each declaration yields one
+  declaration whose type is translated along the renaming. This covers renaming and
+  copying operators.
+* The checker is a model of the Solver's architecture, not a verification of the Scala
+  code. It is sound by construction, since every answer carries its derivation. It
+  works with fuel and gives no completeness guarantee.
 * Not yet covered:
-  * partial views;
-  * the remaining diagram operators (`modules/diagrams`);
-  * the soundness of MMT's checking algorithm (`Solver`) with respect to the
-    declarative judgments formalized here.
+  * linear functors that produce several declarations per input declaration (e.g. the
+    homomorphism functor) or translate along a non-trivial meta-morphism (the
+    `PushoutFunctor` on diagrams);
+  * the meta-operators that select or rearrange theories (zipping, closure,
+    difference, rebase);
+  * the Solver's handling of unknowns: solving implicit arguments, delaying
+    constraints, and type reconstruction;
+  * completeness of the checker.
