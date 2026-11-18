@@ -34,24 +34,6 @@ Main results:
 
 namespace MMT
 
-/-! ## Constants occurring in terms -/
-
-/-- `t.UsesOnly P`: every constant in `t` satisfies `P`. -/
-def Term.UsesOnly (P : GName → Prop) : Term → Prop
-  | .var _      => True
-  | .const c    => P c
-  | .app f a    => f.UsesOnly P ∧ a.UsesOnly P
-  | .bind b A t => b.UsesOnly P ∧ A.UsesOnly P ∧ t.UsesOnly P
-
-/-- Translation depends only on the constants that occur. -/
-theorem Term.trans_congr {P : GName → Prop} {σ τ : Subst} {t : Term}
-    (ht : t.UsesOnly P) (h : ∀ c, P c → σ c = τ c) : t.trans σ = t.trans τ := by
-  induction t with
-  | var => rfl
-  | const c => exact h c ht
-  | app f a ihf iha => simp [Term.trans, ihf ht.1, iha ht.2]
-  | bind b A t ihb ihA iht => simp [Term.trans, ihb ht.1, ihA ht.2.1, iht ht.2.2]
-
 /-- `c` is declared in `S`. -/
 def Sig.Has (S : Sig) (c : GName) : Prop := (S c).isSome = true
 

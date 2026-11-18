@@ -19,9 +19,9 @@ classical logic.
 | `Translation.lean` | Homomorphic translation along morphisms, identity, composition, functoriality, commutation with shifting and substitution | `Library.ApplyMorphs`, `api/objects/Translator.scala` |
 | `Judgment.lean` | Flat signatures, judgments, abstract `Foundation`, derivability, well-typed morphisms, **judgment preservation**, category of theories | `api/checking/{Rules,Solver}.scala`, `api/objects/Judgements.scala` |
 | `LF.lean` | LF as a concrete foundation, with proofs that its rules are stable under translation and context extension | `mmt-lf` |
-| `Modules.lean` | Theories with meta-theories and includes, libraries, visibility, flattening, views, view checking | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
+| `Modules.lean` | Theories with meta-theories, includes and structure declarations; libraries, visibility, flattening (including structure copies), views, view checking, structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
 | `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
-| `Example.lean` | Worked example: the view `Magma → NatArith` over LF, checked and used to transport a typing derivation | — |
+| `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, and `Bimagma` with two structures `add, mul : Magma`. Each is checked and used to transport a typing derivation | — |
 
 ## Main results
 
@@ -37,6 +37,9 @@ classical logic.
   applies to all LF-based theories.
 * `Visible.isMorphism`: include and meta-theory paths are morphisms between flattenings.
 * `View.isMorphism_of_check`: it is enough to check a view's assignments locally.
+* `structMor_isMorphism`, `structMor_preserves`: a `structure s : S` declared in a
+  theory `H` induces a well-typed morphism `flat S → flat H`. It sends shared
+  constants to themselves and the others to their copies `H?s/c`.
 * `pushout_isMorphism`, `pushout_incl`, `pushout_commutes`: the pushout square of
   well-typed morphisms. `σ' : S' → T'` is well-typed, `T ⊆ T'`, and `σ'` agrees with
   `σ` on `S`.
@@ -47,6 +50,8 @@ classical logic.
   well-typed morphism `S → T'`. Every judgment of `S` holds in `T'` after renaming.
 * `Example.natArith_plus_xx`: derives `x : N ⊢ plus x x : N` from
   `x : U ⊢ op x x : U` by applying the preservation theorem to the view.
+* `Example.bimagma_addop_xx`: the same derivation, transported along the structure
+  `add`, gives `x : add/U ⊢ add/op x x : add/U` in `Bimagma`.
 
 ## Modelling choices and scope
 
@@ -62,13 +67,19 @@ classical logic.
   rule `c : A` and the definition rule `c ≡ d : A`.
 * Global names are qualified by their home theory. So flattening is a lookup filtered by
   visibility and needs no renaming.
+* Local names are either base names or structure copies `LName.sub s S c`, MMT's
+  complex names `[S]/s/c`. The declaration of a copy is computed by recursion on its
+  local name: it is the original declaration, translated along the structure.
+* In the module layer, a structure shares the constants that are already visible in
+  the host, such as the meta-theory, and copies all the others.
 * Pushouts and structures are built on flat signatures. The fresh names (MMT's
   `T?s/c`) come from an abstract injective `Renaming`. Assignments may only define
   copied constants that have no definiens. The universal property assumes that the
   host and the extension are closed, i.e. their declarations refer only to their own
   constants.
 * Not yet covered:
-  * structures as declarations inside the `Library`/`flat` layer of `Modules.lean`;
+  * a proof that the module-level flattening of a structure is literally the pushout
+    of `Pushout.lean` (the two are related, but no equation between them is stated);
   * partial views;
   * the remaining diagram operators (`modules/diagrams`);
   * the soundness of MMT's checking algorithm (`Solver`) with respect to the

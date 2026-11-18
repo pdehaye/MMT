@@ -19,10 +19,19 @@ namespace MMT
 /-- Names of modules (theories, views). In MMT these are `MPath`s. -/
 abbrev ThyName := String
 
+/-- Local names of constants (MMT `LocalName`). `sub s S c` is the copy of the
+constant `S?c` induced by the structure `s` (MMT: the complex name `[S]/s/c`). -/
+inductive LName where
+  | base (n : String)
+  | sub  (s : String) (thy : ThyName) (orig : LName)
+deriving DecidableEq, Repr, Inhabited
+
+instance : Coe String LName := ⟨LName.base⟩
+
 /-- Global names of constants (MMT `GlobalName = MPath ? LocalName`). -/
 structure GName where
   thy  : ThyName
-  name : String
+  name : LName
 deriving DecidableEq, Repr, Inhabited
 
 /-- MMT terms. -/
