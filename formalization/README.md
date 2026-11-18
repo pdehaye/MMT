@@ -21,6 +21,7 @@ classical logic.
 | `LF.lean` | LF as a concrete foundation, with proofs that its rules are stable under translation and context extension | `mmt-lf` |
 | `Modules.lean` | Theories with meta-theories, includes and structure declarations; libraries, visibility, flattening (including structure copies), views, view checking, structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
 | `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
+| `StructurePushout.lean` | Flattening a theory with a structure declaration is the pushout of `Pushout.lean`, and the structure morphism is the pushout morphism | `api/symbols/Structure.scala` |
 | `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, and `Bimagma` with two structures `add, mul : Magma`. Each is checked and used to transport a typing derivation | — |
 
 ## Main results
@@ -40,6 +41,12 @@ classical logic.
 * `structMor_isMorphism`, `structMor_preserves`: a `structure s : S` declared in a
   theory `H` induces a well-typed morphism `flat S → flat H`. It sends shared
   constants to themselves and the others to their copies `H?s/c`.
+* `flat_struct_eq_pushout`: if `H` declares `structure s : Sdom`, then `flat H` *is* the
+  pushout of `flat Sdom` along the identity on the constants shared with `H`. The base
+  of the pushout is `H` without the copies made by `s`. `poMor_eq_structMor` shows that
+  the pushout morphism coincides with `structMor` on `Sdom`.
+* `flat_struct_universal`: so the host theory has the universal property of a pushout,
+  with the structure morphism as one of its legs.
 * `pushout_isMorphism`, `pushout_incl`, `pushout_commutes`: the pushout square of
   well-typed morphisms. `σ' : S' → T'` is well-typed, `T ⊆ T'`, and `σ'` agrees with
   `σ` on `S`.
@@ -78,8 +85,6 @@ classical logic.
   host and the extension are closed, i.e. their declarations refer only to their own
   constants.
 * Not yet covered:
-  * a proof that the module-level flattening of a structure is literally the pushout
-    of `Pushout.lean` (the two are related, but no equation between them is stated);
   * partial views;
   * the remaining diagram operators (`modules/diagrams`);
   * the soundness of MMT's checking algorithm (`Solver`) with respect to the

@@ -5,3 +5,4 @@ import MMTFormal.LF
 import MMTFormal.Modules
 import MMTFormal.Pushout
 import MMTFormal.Example
+import MMTFormal.StructurePushout
