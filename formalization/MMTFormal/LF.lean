@@ -44,7 +44,7 @@ inductive Rule : List Judgment → Judgment → Prop where
   | piKind (Γ A B) : Rule [typing Γ A type, typing (A :: Γ) B kind] (typing Γ (Pi A B) kind)
   | lamI  (Γ A B t) : Rule [typing Γ A type, typing (A :: Γ) t B] (typing Γ (lam A t) (Pi A B))
   | appE  (Γ A B f a) : Rule [typing Γ f (Pi A B), typing Γ a A]
-      (typing Γ (.app f a) (B.inst 0 a))
+      (typing Γ (.app f a) (inst 0 a B))
   -- conversion
   | conv  (Γ t A B U) : Rule [typing Γ t A, equal Γ A B U] (typing Γ t B)
   -- equality: equivalence relation
@@ -57,10 +57,10 @@ inductive Rule : List Judgment → Judgment → Prop where
   | lamCong (Γ A A' B t t') : Rule [equal Γ A A' type, equal (A :: Γ) t t' B]
       (equal Γ (lam A t) (lam A' t') (Pi A B))
   | appCong (Γ A B f f' a a') : Rule [equal Γ f f' (Pi A B), equal Γ a a' A]
-      (equal Γ (.app f a) (.app f' a') (B.inst 0 a))
+      (equal Γ (.app f a) (.app f' a') (inst 0 a B))
   -- computation
   | beta (Γ A B t a) : Rule [typing (A :: Γ) t B, typing Γ a A]
-      (equal Γ (.app (lam A t) a) (t.inst 0 a) (B.inst 0 a))
+      (equal Γ (.app (lam A t) a) (inst 0 a t) (inst 0 a B))
   | eta  (Γ A B f) : Rule [typing Γ f (Pi A B)]
       (equal Γ f (lam A (.app (f.liftN 1 0) (.var 0))) (Pi A B))
 
