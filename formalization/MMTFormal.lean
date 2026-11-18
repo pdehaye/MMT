@@ -6,3 +6,5 @@ import MMTFormal.Modules
 import MMTFormal.Pushout
 import MMTFormal.Example
 import MMTFormal.StructurePushout
+import MMTFormal.PartialView
+import MMTFormal.Diagrams
