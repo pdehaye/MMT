@@ -16,3 +16,4 @@ import MMTFormal.LFMeta
 import MMTFormal.DiagramOps
 import MMTFormal.Unknowns
 import MMTFormal.ViewChecker
+import MMTFormal.STLC

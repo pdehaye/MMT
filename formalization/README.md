@@ -19,6 +19,7 @@ classical logic.
 | `Translation.lean` | Homomorphic translation along morphisms, identity, composition, functoriality, commutation with shifting and substitution | `Library.ApplyMorphs`, `api/objects/Translator.scala` |
 | `Judgment.lean` | Flat signatures, judgments, abstract `Foundation`, derivability, well-typed morphisms, **judgment preservation**, category of theories | `api/checking/{Rules,Solver}.scala`, `api/objects/Judgements.scala` |
 | `LF.lean` | LF as a concrete foundation, with proofs that its rules are stable under translation and context extension | `mmt-lf` |
+| `STLC.lean` | A second foundation (simply typed λ-calculus); foundation morphisms and their preservation theorem; the embedding of STLC into LF | foundation-independence, meta-theory morphisms |
 | `LFMeta.lean` | Metatheory of LF: de Bruijn identities, scoping, inner weakening and the substitution lemma | `mmt-lf` |
 | `Modules.lean` | Theories with meta-theories, includes and structure declarations; libraries, visibility, flattening (including structure copies), views, view checking, structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
 | `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
@@ -46,6 +47,16 @@ classical logic.
   and inclusions are morphisms.
 * `LF.foundation`: LF meets the foundation interface, so the preservation theorem
   applies to all LF-based theories.
+* Foundation-independence:
+  * `STLC.foundation`: the simply typed λ-calculus is a second foundation, so all
+    generic results (judgment preservation, the category of theories, pushouts,
+    structures) apply to it;
+  * `FMor.preserves`: a *foundation morphism* translates terms so that every rule of
+    the source foundation is derivable in the target. It transports every derivation,
+    over the translated signature;
+  * `stlcToLF`: STLC embeds into LF (`tp ↦ type`, `→ ↦ Π`, `λ ↦ λ`). The formation rule
+    for function types is derived using weakening in LF;
+  * `STLC.Example.ssz_LF`: `s (s z) : N`, derived in STLC, read in LF.
 * `LF.scoping`: in a derivable judgment, all terms use only variables of the context.
   So checked declarations are closed (`DeclOK.closed`).
 * `LF.weaken`: inner weakening is admissible in LF. A variable can be inserted at any
