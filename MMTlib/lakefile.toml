@@ -1,0 +1,20 @@
+name = "MMTlib"
+version = "0.1.0"
+description = "A Lean 4 formalization of the MMT language and system"
+keywords = ["MMT", "logical frameworks", "LF", "module systems", "theory graphs"]
+defaultTargets = ["MMTlib"]
+testDriver = "MMTlibExamples"
+
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+pp.unicode.fun = true
+linter.missingDocs = true
+
+[[lean_lib]]
+name = "MMTlib"
+
+[[lean_lib]]
+name = "MMTlibExamples"
+# Examples are documentation in their own right; individual docstrings are optional.
+leanOptions = { linter.missingDocs = false }
