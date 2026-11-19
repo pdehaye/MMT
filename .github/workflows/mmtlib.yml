@@ -1,0 +1,26 @@
+name: MMTlib
+
+on:
+  push:
+    paths:
+      - "MMTlib/**"
+      - ".github/workflows/mmtlib.yml"
+  pull_request:
+    paths:
+      - "MMTlib/**"
+      - ".github/workflows/mmtlib.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and test MMTlib
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Builds the library with warnings as errors (so `sorry` fails the build) and runs
+      # `lake test`, which builds the examples and the axiom audit.
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: MMTlib
+          build-args: "--wfail"
+          test: true

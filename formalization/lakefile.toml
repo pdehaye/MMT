@@ -1,5 +1,0 @@
-name = "MMTFormal"
-defaultTargets = ["MMTFormal"]
-
-[[lean_lib]]
-name = "MMTFormal"
