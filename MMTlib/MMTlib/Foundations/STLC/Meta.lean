@@ -300,7 +300,8 @@ theorem inv_app {S : Sig} {Γ : Ctx} {f a B : Term}
 /-- Inversion for λ-abstraction. -/
 theorem inv_lam {S : Sig} {Γ : Ctx} {A t T : Term}
     (h : Derivable foundation S (typing Γ (lam A t) T)) :
-    ∃ B, T = arr A B ∧ Derivable foundation S (typing (A :: Γ) t (B.liftN 1 0)) := by
+    ∃ B, T = arr A B ∧ Derivable foundation S (typing Γ A tp) ∧
+      Derivable foundation S (typing (A :: Γ) t (B.liftN 1 0)) := by
   generalize hx : lam A t = x at h
   cases h with
   | const => cases hx
@@ -309,7 +310,7 @@ theorem inv_lam {S : Sig} {Γ : Ctx} {A t T : Term}
     | lamI _ _ B _ =>
       simp only [lam, Term.bind.injEq, true_and] at hx
       obtain ⟨rfl, rfl⟩ := hx
-      exact ⟨B, rfl, hps _ (by simp)⟩
+      exact ⟨B, rfl, hps _ (by simp), hps _ (by simp)⟩
     | arrF => simp [lam, arr, lamN, arrN] at hx
     | var => cases hx
     | appE => cases hx
@@ -320,9 +321,41 @@ theorem beta_typed {S : Sig} (hS : S.ClosedDecls) {Γ : Ctx} {A t a B : Term}
     (h : Derivable foundation S (typing Γ (.app (lam A t) a) B)) :
     Derivable foundation S (typing Γ (inst 0 a t) B) := by
   obtain ⟨A₀, hf, ha⟩ := inv_app h
-  obtain ⟨B₁, he, ht⟩ := inv_lam hf
+  obtain ⟨B₁, he, _, ht⟩ := inv_lam hf
   obtain ⟨rfl, rfl⟩ := arr_inj he
   have := subst hS ht 0 A₀ rfl (by simpa [Judgment.ctx] using ha)
   simpa [Judgment.sub, ctxSub, inst_lift0] using this
+
+/-- β-reduction on terms, not inside type annotations: STLC types can contain
+β-redexes (a λ-abstraction returning a base type), and as STLC has no conversion rule,
+reducing an annotation changes the type of the term. -/
+inductive TStep : Term → Term → Prop
+  /-- Contracting a redex. -/
+  | beta (A t a : Term) : TStep (.app (lam A t) a) (inst 0 a t)
+  /-- Reducing the function. -/
+  | appL {f f' : Term} (a : Term) : TStep f f' → TStep (.app f a) (.app f' a)
+  /-- Reducing the argument. -/
+  | appR (f : Term) {a a' : Term} : TStep a a' → TStep (.app f a) (.app f a')
+  /-- Reducing under a λ. -/
+  | lam (A : Term) {t t' : Term} : TStep t t' → TStep (lam A t) (lam A t')
+
+/-- **Subject reduction for STLC**: term-level β-reduction preserves types. -/
+theorem TStep.typed {S : Sig} (hS : S.ClosedDecls) {t t' : Term} (h : TStep t t') :
+    ∀ {Γ : Ctx} {B : Term}, Derivable foundation S (typing Γ t B) →
+      Derivable foundation S (typing Γ t' B) := by
+  induction h with
+  | beta A t a => exact fun ht => beta_typed hS ht
+  | appL a _ ih =>
+    intro Γ B ht
+    obtain ⟨A, hf, ha⟩ := inv_app ht
+    exact .rule (Rule.appE Γ A B _ a) (by simp [ih hf, ha])
+  | appR f _ ih =>
+    intro Γ B ht
+    obtain ⟨A, hf, ha⟩ := inv_app ht
+    exact .rule (Rule.appE Γ A B f _) (by simp [hf, ih ha])
+  | lam A _ ih =>
+    intro Γ T ht
+    obtain ⟨B, rfl, hA, hb⟩ := inv_lam ht
+    exact .rule (Rule.lamI Γ A B _) (by simp [hA, ih hb])
 
 end MMT.STLC

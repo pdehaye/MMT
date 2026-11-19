@@ -4,7 +4,7 @@
 
 * Weakening and the substitution lemma are proved once for every foundation with
   stable rules (`MMTlib.Core.Structural`); LF and STLC instantiate them
-  (`MMTlib.Foundations.STLC.Meta` is new, with inversion and typing of β-reducts). The
+  (`MMTlib.Foundations.STLC.Meta` is new, with inversion and subject reduction). The
   generic de Bruijn identities moved from `LF.Meta` to `Core.Structural` (names unchanged).
 * Delayed constraints (`MMTlib.Checking.DelayedConstraints`): unification up to β by
   normalization, solving passes that delay constraints until they become solvable.

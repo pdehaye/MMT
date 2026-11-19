@@ -114,3 +114,6 @@ if this changes.
 
 /-- info: 'MMT.STLC.beta_typed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms MMT.STLC.beta_typed
+
+/-- info: 'MMT.STLC.TStep.typed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms MMT.STLC.TStep.typed

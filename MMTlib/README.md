@@ -64,7 +64,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlib.Foundations.LF.Confluence` | β-reduction, parallel reduction, complete development; Church–Rosser, unique normal forms | `mmt-lf` (`Beta` rule) |
 | `MMTlib.Core.FoundationMorphism` | Foundation morphisms and the transport of derivations | meta-theory morphisms |
 | `MMTlib.Foundations.STLC.Basic` | A second foundation, the simply typed λ-calculus | foundation-independence |
-| `MMTlib.Foundations.STLC.Meta` | Weakening and substitution for STLC from the generic proofs; inversion; typing of β-reducts | foundation-independence |
+| `MMTlib.Foundations.STLC.Meta` | Weakening and substitution for STLC from the generic proofs; inversion; subject reduction | foundation-independence |
 | `MMTlib.Foundations.STLC.ToLF` | The embedding of STLC into LF | meta-theory morphisms |
 | **Module system** | | |
 | `MMTlib.Modules.Basic` | Theories with meta-theories, includes and structures; visibility; flattening (including structure copies); views; structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
@@ -123,8 +123,10 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
   and if `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then `Δ[u/x], Γ ⊢ J[u/x]`. Both lemmas assume
   the signature's declarations are closed (`Sig.ClosedDecls`).
 * `LF.weaken`, `LF.subst` and `STLC.weaken`, `STLC.subst`: the instances for LF and STLC.
-* `STLC.beta_typed`: in STLC, which has no conversion rule, contracting a well-typed
-  β-redex preserves its type (via inversion, `STLC.inv_app`, `STLC.inv_lam`).
+* `STLC.beta_typed`, `STLC.TStep.typed` (**subject reduction for STLC**): β-reduction
+  outside type annotations preserves types (via inversion, `STLC.inv_app`,
+  `STLC.inv_lam`). Annotations are excluded: STLC types may contain redexes, and without
+  a conversion rule, reducing one changes the type.
 * `LF.Red.confluent` (**Church–Rosser**): β-reduction is confluent, by the
   Tait–Martin-Löf method with Takahashi's complete development (`LF.Par.triangle`,
   `LF.Par.diamond`). Consequences: `LF.Red.normal_unique` (normal forms are unique) and
