@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Confluence of β-reduction (`MMTlib.Foundations.LF.Confluence`): parallel
+  reduction, complete development, the Church–Rosser theorem, uniqueness of normal
+  forms, and conversion as joinability.
 * Docstrings for every public declaration, enforced by `linter.missingDocs`.
 
 * The homomorphism functor for signatures with predicates

@@ -1,4 +1,5 @@
 import MMTlibExamples.Algebra
+import MMTlibExamples.Reduction
 import MMTlibExamples.TypeChecker
 import MMTlibExamples.Homomorphism
 import MMTlibExamples.Unknowns

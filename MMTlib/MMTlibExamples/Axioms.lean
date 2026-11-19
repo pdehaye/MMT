@@ -87,3 +87,9 @@ if this changes.
 /-- info: 'MMT.Hom.FOMorA.hom_isMorphism' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms MMT.Hom.FOMorA.hom_isMorphism
 
+
+/-- info: 'MMT.LF.Red.confluent' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms MMT.LF.Red.confluent
+
+/-- info: 'MMT.LF.Conv.joinable' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms MMT.LF.Conv.joinable

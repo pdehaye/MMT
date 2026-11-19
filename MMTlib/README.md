@@ -3,7 +3,7 @@
 MMTlib is a Lean 4 library formalizing MMT, without dependencies (no Mathlib). It covers:
 * the foundation-independent core (terms, morphisms, judgments);
 * two foundations, LF and the simply typed λ-calculus, and foundation morphisms;
-* the metatheory of LF;
+* the metatheory of LF, including confluence of β-reduction;
 * the module system (theories, includes, structures, views, partial views) and pushouts;
 * diagram operators;
 * executable checkers that are proved sound: a type checker, a theory checker and a
@@ -59,6 +59,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | **Foundations** | | |
 | `MMTlib.Foundations.LF.Basic` | LF as a foundation; its rules are stable under translation and context extension | `mmt-lf` |
 | `MMTlib.Foundations.LF.Meta` | Metatheory of LF: de Bruijn identities, scoping, inner weakening, substitution lemma | `mmt-lf` |
+| `MMTlib.Foundations.LF.Confluence` | β-reduction, parallel reduction, complete development; Church–Rosser, unique normal forms | `mmt-lf` (`Beta` rule) |
 | `MMTlib.Core.FoundationMorphism` | Foundation morphisms and the transport of derivations | meta-theory morphisms |
 | `MMTlib.Foundations.STLC.Basic` | A second foundation, the simply typed λ-calculus | foundation-independence |
 | `MMTlib.Foundations.STLC.ToLF` | The embedding of STLC into LF | meta-theory morphisms |
@@ -86,6 +87,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlibExamples.ModuleChecker` | Runs of the theory and view checkers | — |
 | `MMTlibExamples.Homomorphism` | `Hom(Magma)`; `Hom` of a compound-term view | — |
 | `MMTlibExamples.Unknowns` | Implicit arguments | — |
+| `MMTlibExamples.Reduction` | β-reduction of the K combinator; its unique normal form | — |
 | `MMTlibExamples.STLC` | An STLC derivation read in LF | — |
 | `MMTlibExamples.Axioms` | Axiom audit of the main theorems (`#guard_msgs`) | — |
 
@@ -111,6 +113,10 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
   context.
 * `LF.subst`: the substitution lemma. If `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then
   `Δ[u/x], Γ ⊢ J[u/x]`. Both lemmas assume the signature's declarations are closed.
+* `LF.Red.confluent` (**Church–Rosser**): β-reduction is confluent, by the
+  Tait–Martin-Löf method with Takahashi's complete development (`LF.Par.triangle`,
+  `LF.Par.diamond`). Consequences: `LF.Red.normal_unique` (normal forms are unique) and
+  `LF.Conv.joinable` (β-convertible terms have a common reduct).
 * `STLC.foundation`: the simply typed λ-calculus is a second foundation, so all
   generic results apply to it.
 * `FMor.preserves`: a *foundation morphism* translates terms so that every source rule
@@ -281,8 +287,8 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
   predicates or axioms. Its functor laws for compound-term views, which hold only up to
   proof irrelevance.
 * The Solver's delayed constraints and higher-order pattern unification.
-* Completeness of the checker with conversion, which would need normalization and
-  confluence of β-reduction.
+* Completeness of the checker with conversion. Confluence of β-reduction is proved;
+  normalization of well-typed terms and subject reduction are not.
 
 ## License
 
