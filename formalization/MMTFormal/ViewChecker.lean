@@ -94,26 +94,131 @@ theorem closedUnderEdges_sound {L : Library} {Ls : List ThyName}
   simp only [closedUnderEdges, List.all_eq_true, List.contains_iff_mem] at h
   exact h R hR S hS
 
+/-- Everything reached is visible. -/
+theorem reach_sound {L : Library} : ∀ {n : Nat} {T S : ThyName}, S ∈ reach L n T → Visible L T S
+  | 0, T, S, h => by simp [reach] at h; subst h; exact .refl _
+  | n + 1, T, S, h => by
+    simp only [reach, List.mem_cons, List.mem_flatMap] at h
+    rcases h with rfl | ⟨R, hR, hS⟩
+    · exact .refl _
+    · exact (edges_visible hR).trans (reach_sound hS)
+
+/-- Decidable visibility: `S` was reached from `T`. -/
+def visDec (L : Library) (k : Nat) (T S : ThyName) : Bool := (reach L k T).contains S
+
+theorem visDec_sound {L : Library} {k : Nat} {T S : ThyName} (h : visDec L k T S = true) :
+    Visible L T S := reach_sound (by simpa [visDec] using h)
+
+/-- With a completeness certificate for `T`, `visDec` decides visibility from `T`. -/
+theorem visDec_iff {L : Library} {k : Nat} {T S : ThyName}
+    (hc : closedUnderEdges L (reach L k T) = true) : visDec L k T S = true ↔ Visible L T S :=
+  ⟨visDec_sound, fun h => by
+    simpa [visDec] using visible_mem_of_closed (closedUnderEdges_sound hc) (self_mem_reach L k T) h⟩
+
 /-! ## Computable flattening -/
 
-/-- Flattening restricted to constants with base names, by bounded search. -/
+/-- The structure morphism, with decidable visibility. -/
+def structMorB (L : Library) (k : Nat) (H : ThyName) (s : String) : Subst := fun c =>
+  if visDec L k H c.thy then .const c else .const ⟨H, .sub s c.thy c.name⟩
+
+theorem structMorB_eq {L : Library} {k : Nat} {H : ThyName} {s : String}
+    (hc : closedUnderEdges L (reach L k H) = true) : structMorB L k H s = structMor L H s := by
+  funext c
+  unfold structMorB structMor
+  by_cases h : Visible L H c.thy
+  · simp [h, (visDec_iff hc).mpr h]
+  · have : visDec L k H c.thy = false := by
+      cases e : visDec L k H c.thy
+      · rfl
+      · exact absurd ((visDec_iff hc).mp e) h
+    simp [h, this]
+
+/-- `homeInfo` with decidable visibility. Copies are only produced when the host has a
+completeness certificate, so that non-visibility can be decided. -/
+def homeInfoB (L : Library) (k : Nat) : ThyName → LName → Option ConstInfo
+  | H, .base n => (L H).bind (·.localLookup n)
+  | H, .sub s S0 orig =>
+    if closedUnderEdges L (reach L k H) then
+      match (L H).bind (·.structLookup s) with
+      | some (Sdom, as) =>
+        if visDec L k Sdom S0 && !visDec L k H S0 then
+          (homeInfoB L k S0 orig).map fun i =>
+            ⟨i.tp.map (·.trans (structMorB L k H s)),
+             (as.lookup ⟨S0, orig⟩).or (i.df.map (·.trans (structMorB L k H s)))⟩
+        else none
+      | none => none
+    else none
+
+theorem homeInfoB_sound {L : Library} {k : Nat} : ∀ {H : ThyName} {nm : LName} {i : ConstInfo},
+    homeInfoB L k H nm = some i → homeInfo L H nm = some i
+  | H, .base n, i, h => by simpa [homeInfoB, homeInfo] using h
+  | H, .sub s S0 orig, i, h => by
+    unfold homeInfoB at h
+    split at h
+    · rename_i hc
+      rw [structMorB_eq hc] at h
+      unfold homeInfo
+      cases hs : (L H).bind (·.structLookup s) with
+      | none => rw [hs] at h; cases h
+      | some p =>
+        obtain ⟨Sdom, as⟩ := p
+        rw [hs] at h
+        simp only at h ⊢
+        split at h
+        · rename_i hv
+          simp only [Bool.and_eq_true, Bool.not_eq_true'] at hv
+          have h1 : Visible L Sdom S0 := visDec_sound hv.1
+          have h2 : ¬ Visible L H S0 := fun hvis => by
+            rw [(visDec_iff hc).mpr hvis] at hv; exact Bool.noConfusion hv.2
+          have hc' : Visible L Sdom S0 ∧ ¬ Visible L H S0 := ⟨h1, h2⟩
+          simp only [hc', and_self, not_false_eq_true, ↓reduceIte]
+          obtain ⟨j, hj, rfl⟩ := Option.map_eq_some_iff.mp h
+          rw [homeInfoB_sound hj]
+          rfl
+        · cases h
+    · cases h
+
+/-- Computable flattening, including structure copies. -/
 def flatB (L : Library) (n : Nat) (T : ThyName) : Sig := fun c =>
-  if visibleB L n T c.thy then
-    match c.name with
-    | .base m => (L c.thy).bind (·.localLookup m)
-    | _ => none
-  else none
+  if visDec L n T c.thy then homeInfoB L n c.thy c.name else none
 
 theorem flatB_sub (L : Library) (n : Nat) (T : ThyName) : (flatB L n T).Sub (flat L T) := by
   intro c i h
   unfold flatB at h
   split at h
   · rename_i hv
-    obtain ⟨t, nm⟩ := c
-    cases nm with
-    | base m => exact flat_eq_some.mpr ⟨visibleB_sound hv, h⟩
-    | sub => cases h
+    exact flat_eq_some.mpr ⟨visDec_sound hv, homeInfoB_sound h⟩
   · cases h
+
+/-- With completeness certificates, the computable flattening is exact. -/
+theorem flatB_eq {L : Library} {n : Nat} {T : ThyName} (c : GName)
+    (hT : closedUnderEdges L (reach L n T) = true)
+    (hall : ∀ H, closedUnderEdges L (reach L n H) = true) :
+    flatB L n T c = flat L T c := by
+  have hinfo : ∀ (H : ThyName) (nm : LName), homeInfoB L n H nm = homeInfo L H nm := by
+    intro H nm
+    induction nm generalizing H with
+    | base m => simp [homeInfoB, homeInfo]
+    | sub s S0 o ih =>
+      simp only [homeInfoB, hall H, ↓reduceIte, homeInfo, structMorB_eq (hall H), ih]
+      cases (L H).bind (·.structLookup s) with
+      | none => rfl
+      | some p =>
+        obtain ⟨Sdom, as⟩ := p
+        simp only
+        have e1 := @visDec_iff L n Sdom S0 (hall Sdom)
+        have e2 := @visDec_iff L n H S0 (hall H)
+        by_cases h1 : Visible L Sdom S0 <;> by_cases h2 : Visible L H S0 <;>
+          simp_all
+  unfold flatB flat
+  rw [hinfo]
+  by_cases hv : Visible L T c.thy
+  · simp [hv, (visDec_iff hT).mpr hv]
+  · have : visDec L n T c.thy = false := by
+      cases e : visDec L n T c.thy
+      · rfl
+      · exact absurd ((visDec_iff hT).mp e) hv
+    simp [hv, this]
 
 /-! ## Checking a view -/
 

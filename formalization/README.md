@@ -138,12 +138,19 @@ classical logic.
   * `Example.magma_checks`, `natArith_checks`, `bad_rejected`: `Magma` and `NatArith`
     are checked by `decide`; a theory that uses a constant before declaring it is
     rejected.
+* Computable flattening:
+  * `visDec_iff`: when the theories reached from `T` are closed under edges (a decidable
+    certificate), visibility from `T` is decidable;
+  * `flatB_sub`, `flatB_eq`: the computable flattening, including structure copies, is
+    sound, and exact under the certificates.
 * View checker:
   * `checkView_sound`: if the executable view checker accepts a view, the view is a
     well-typed morphism between the flattenings;
   * `Example.plusView_checks`, `plusView_wellTyped'`: the view `Magma → NatArith` is
     checked by `decide`, replacing the hand proof;
-  * `Example.badView_rejected`: a view with an ill-typed assignment is rejected.
+  * `Example.badView_rejected`: a view with an ill-typed assignment is rejected;
+  * `Example.addView_checks`, `bimagmaExt_checks`: a view into a theory with structures
+    (`U ↦ add/U`, `op ↦ add/op`) and a theory using structure copies are checked.
 * Unknowns:
   * `solution_isMorphism`, `solution_transport`: a solution whose terms have the
     declared types of their unknowns is a well-typed morphism from the signature
@@ -212,9 +219,11 @@ classical logic.
 * For compound-term views the functor laws hold only up to equality of proofs: for
   example, `Hom(φ;ψ)(f^h)` and `(Hom φ;Hom ψ)(f^h)` are different proof terms of the
   same type. Proving them equal would need proof irrelevance in the logic.
-* The view checker covers domains whose visible theories declare no structures. It
-  checks that the theories visible from the domain are visible from the codomain, and
-  that their declarations do not mention the domain. Other views are rejected.
+* The view checker allows structures in the codomain, but the theories visible from the
+  domain must declare none. It checks that the theories visible from the domain are
+  visible from the codomain, and that their declarations do not mention the domain.
+  Other views are rejected. The theory checker does not check structure declarations
+  themselves; `structMor_isMorphism` gives the conditions for that.
 * The checker is a model of the Solver's architecture, not a verification of the Scala
   code. It is sound by construction, since every answer carries its derivation. It
   works with fuel and gives no completeness guarantee.

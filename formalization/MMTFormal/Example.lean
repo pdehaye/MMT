@@ -387,4 +387,27 @@ def badLib : Library := fun
 
 theorem bad_rejected : checkTheory badLib 4 "Bad" = false := by decide
 
+/-! ### Checking with structure copies -/
+
+/-- A view into a theory with structures: `Magma → Bimagma`, `U ↦ add/U`, `op ↦ add/op`. -/
+def addView : View :=
+  { dom := "Magma", cod := "Bimagma", assign := [("U", addU), ("op", .const addOp)] }
+
+theorem addView_checks : checkView lib 4 addView = true := by decide
+
+theorem addView_wellTyped : addView.WellTyped LF.foundation lib := checkView_sound addView_checks
+
+/-- `Bimagma` with an extra declaration using the copies: `sq : add/U → add/U := λx. add/op x x`. -/
+def bimagmaExt : Theory :=
+  { metaThy := some "LF",
+    decls := [.struct "add" "Magma" [],
+              .const "sq" (some (arrow addU addU))
+                (some (lam addU (.app (.app (.const addOp) (.var 0)) (.var 0))))] }
+
+def libExt : Library := fun
+  | "Bimagma" => some bimagmaExt
+  | T => lib T
+
+theorem bimagmaExt_checks : checkTheory libExt 4 "Bimagma" = true := by decide
+
 end MMT.Example
