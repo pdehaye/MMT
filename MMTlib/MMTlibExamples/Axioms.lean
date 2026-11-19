@@ -3,8 +3,8 @@ import MMTlib
 /-!
 # Axiom audit
 
+A regression test: the main theorems depend only on Lean's standard axioms (`propext`,
 `Quot.sound`, and in some cases `Classical.choice`).
-`Quot.sound`, and `Classical.choice` where flattening decides visibility classically).
 In particular none of them depends on `sorryAx`. `#guard_msgs` makes `lake test` fail
 if this changes.
 -/
