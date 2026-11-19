@@ -2,6 +2,7 @@ import MMTFormal.LF
 import MMTFormal.Modules
 import MMTFormal.Checker
 import MMTFormal.HomView
+import MMTFormal.Unknowns
 
 /-!
 # Example: a view and structures over LF
@@ -306,5 +307,40 @@ theorem hom_plusZeroView :
     IsMorphism LF.foundation (Hom.homSig "HomMagma" magmaFO) (Hom.homSig "HomNat" natFO)
       (plusZeroView.hom "HomMagma" "HomNat") :=
   Hom.FOView.hom_isMorphism (by decide) (by decide) (by decide)
+
+/-! ### Solving an implicit argument
+
+With `id : Π A:type. A → A`, `N : type` and `c : N`, the term `id ?A c` is checked
+against `N`. Unifying the constraint `?A = N` and checking the instance succeeds, so
+`id N c : N` is derivable. -/
+
+def gId : GName := ⟨"Poly", "id"⟩
+def gNat : GName := ⟨"Poly", "N"⟩
+def gC : GName := ⟨"Poly", "c"⟩
+def gA : GName := ⟨unknownThy, "A"⟩
+
+def polySig : Sig := fun x =>
+  if x = gId then some ⟨some (LF.Pi LF.type (LF.Pi (.var 0) (.var 1))), none⟩
+  else if x = gNat then some ⟨some LF.type, none⟩
+  else if x = gC then some ⟨some (.const gNat), none⟩
+  else none
+
+def idApp : Term := .app (.app (.const gId) (.const gA)) (.const gC)
+
+theorem solve_idApp :
+    (solveCheck polySig 16 [(.const gA, .const gNat)] [] idApp (.const gNat)).isSome = true := by
+  decide
+
+/-- The solved and checked judgment: `id N c : N`. -/
+theorem idApp_solved :
+    Derivable LF.foundation polySig
+      (.typing [] (.app (.app (.const gId) (.const gNat)) (.const gC)) (.const gNat)) := by
+  obtain ⟨θ, hθ⟩ := Option.isSome_iff_exists.mp solve_idApp
+  obtain ⟨hsol, hcs, hd⟩ := solveCheck_sound hθ
+  have hA : θ gA = .const gNat := by
+    have := hcs _ (List.mem_singleton_self _)
+    simpa [Term.trans, hsol.fix gNat (by decide)] using this
+  simpa [idApp, Term.trans, hsol.fix gId (by decide), hsol.fix gC (by decide),
+    hsol.fix gNat (by decide), hA] using hd
 
 end MMT.Example

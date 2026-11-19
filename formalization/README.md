@@ -24,11 +24,12 @@ classical logic.
 | `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
 | `StructurePushout.lean` | Flattening a theory with a structure declaration is the pushout of `Pushout.lean`, and the structure morphism is the pushout morphism | `api/symbols/Structure.scala` |
 | `PartialView.lean` | Partial morphisms and partial translation, preservation on the domain of definition, totality, composition, partial views in the module system | `api/modules/View.scala` (partial views) |
-| `Diagrams.lean` | Diagrams; linear functors given by systematic renaming, with functor laws; connectors and naturality; sequencing, union, and connecting a diagram to its image | `api/modules/diagrams/{Diagram,LinearFunctor,LinearConnector,MetaOperators}.scala`, `SystematicRenamer` |
+| `Diagrams.lean` | Diagrams; linear functors given by systematic renaming, with functor laws; connectors and naturality; composition, union, and connecting a diagram to its image | `api/modules/diagrams/{Diagram,LinearFunctor,LinearConnector,MetaOperators}.scala`, `SystematicRenamer` |
 | `DiagramOps.lean` | Meta-operators: union, difference, rebase, subsumption and closure of diagrams of module names; sequencing and zipping of operators on typed diagrams | `api/modules/diagrams/{Diagram,MetaOperators,ZippingOperator}.scala` |
 | `PushoutFunctor.lean` | The pushout functor along a meta-theory morphism `m : M → M'`: theories, morphisms, connectors, functor laws | `api/modules/diagrams/PushoutOperator.scala` (`PushoutFunctor`, `PushoutConnector`) |
 | `Homomorphism.lean` | The homomorphism functor on first-order signatures over a logic `SFOL`: the theory `Hom(Σ)` of homomorphisms between two models, its well-formedness, its action on signature morphisms, and the projections | diagram operators (homomorphism functor) |
 | `HomView.lean` | The homomorphism functor on views that send operations to compound terms: proof terms built by induction on the term, multi-step β-reduction, and conversion to the translated axiom | diagram operators (homomorphism functor) |
+| `Unknowns.lean` | Unknowns as in MMT's Solver: solutions as morphisms, transport of derivations, first-order unification, and solving followed by checking | `api/checking/Solver.scala` (unknowns, solutions) |
 | `Checker.lean` | An executable type checker for LF (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer, hence is sound by construction | `api/checking/{Solver,Rules}.scala`, `mmt-lf` rules |
 | `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, `Bimagma` with two structures `add, mul : Magma`, and runs of the checker. Each is checked and used to transport a typing derivation | — |
 
@@ -85,7 +86,7 @@ classical logic.
   * `LinFunctor.mor_id`, `LinFunctor.mor_comp`: the functor laws, as equations;
   * `LinFunctor.unit_isMorphism`, `LinFunctor.naturality`: the connector `S → F(S)` is
     a natural transformation;
-  * `LinFunctor.comp_obj`, `comp_mor`: sequencing functors gives a functor;
+  * `LinFunctor.comp_obj`, `comp_mor`: composing functors gives a functor;
   * `Diagram.map_wf`, `union_wf`, `connect_wf`: the operators preserve
     well-formedness of diagrams;
   * `Diagram.map_commutes`: they preserve commuting squares.
@@ -128,6 +129,15 @@ classical logic.
     `f^h` to `λx⃗. P(t)`;
   * `Example.hom_plusZeroView`: the view `Magma → Nat`,
     `op ↦ λx y. plus x (plus y zero)`.
+* Unknowns:
+  * `solution_isMorphism`, `solution_transport`: a solution whose terms have the
+    declared types of their unknowns is a well-typed morphism from the signature
+    extended by the unknowns back to the signature. So everything derived with
+    unknowns holds after instantiation;
+  * `unify_sound`: first-order unification returns a solution that makes both sides
+    equal;
+  * `solveCheck_sound`: solving constraints and then checking the instance is sound;
+  * `Example.idApp_solved`: the implicit argument of `id ?A c : N` is solved to `N`.
 * Checker:
   * `LF.Checker.check_sound`, `eq_sound`: whatever the checker accepts is derivable;
   * `Example.check_conv`, `check_beta`, `reject_op_x`: runs of the checker, evaluated
@@ -190,6 +200,6 @@ classical logic.
   * the homomorphism functor on signatures beyond first-order ones (predicates,
     axioms, dependent types), and its functor laws up to proof irrelevance for
     compound-term views;
-  * the Solver's handling of unknowns: solving implicit arguments, delaying
-    constraints, and type reconstruction;
+  * the Solver's delayed constraints, higher-order pattern unification and type
+    reconstruction (unknowns, solutions and first-order unification are covered);
   * completeness of the checker.

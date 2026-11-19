@@ -15,7 +15,7 @@ morphisms to new diagrams, declaration by declaration.
   and the meta-theory is kept.
 * A **linear connector** (`LinearConnector.scala`) connects each theory to its image
   by a morphism, natural in the theory.
-* Meta-operators (`MetaOperators.scala`): sequencing of functors and union of diagrams.
+* Composition of functors and union of diagrams (the other meta-operators are in `DiagramOps.lean`).
 
 Main results:
 * `LinFunctor.mor_isMorphism`: functors map well-typed morphisms to well-typed
@@ -24,7 +24,7 @@ Main results:
   substitutions.
 * `LinFunctor.unit_isMorphism`, `LinFunctor.naturality`: the connector `S → F(S)` is
   a natural family of well-typed morphisms.
-* `LinFunctor.comp_obj`, `LinFunctor.comp_mor`: sequencing two functors is again a
+* `LinFunctor.comp_obj`, `LinFunctor.comp_mor`: composing two functors gives again a
   linear functor.
 * `Diagram.map_wf`, `Diagram.connect_wf`, `Diagram.union_wf`: the diagram operators
   preserve well-formedness. `Diagram.map_commutes`: they preserve commuting squares.
@@ -132,7 +132,7 @@ theorem mor_comp (σ τ : Subst) : G.mor (σ.comp τ) = (G.mor σ).comp (G.mor �
     simp only [Subst.comp, mor_fwd]
     rw [unit_mor]
 
-/-! ## Sequencing functors -/
+/-! ## Composing functors -/
 
 /-- Sequential composition of renamings. -/
 def _root_.MMT.Renaming.comp (ρ₁ ρ₂ : Renaming) : Renaming where

@@ -14,3 +14,4 @@ import MMTFormal.Homomorphism
 import MMTFormal.HomView
 import MMTFormal.LFMeta
 import MMTFormal.DiagramOps
+import MMTFormal.Unknowns
