@@ -1,202 +1,181 @@
-# MMTFormal — a Lean 4 formalization of the MMT core
+# MMTFormal — a Lean 4 formalization of MMT
 
-This directory formalizes the foundation-independent core of MMT, meaning its
-term language and module system, in Lean 4. It does not depend on Mathlib.
+This directory formalizes MMT in Lean 4 without Mathlib. It covers:
+* the foundation-independent core (terms, morphisms, judgments);
+* two foundations, LF and the simply typed λ-calculus, and foundation morphisms;
+* the metatheory of LF;
+* the module system (theories, includes, structures, views, partial views) and pushouts;
+* diagram operators;
+* executable checkers that are proved sound: a type checker, a theory checker and a
+  view checker, plus unknowns with unification and type reconstruction.
 
 ```bash
 cd formalization && lake build
 ```
 
 The toolchain is pinned in `lean-toolchain` (Lean 4.36.0). The build contains no
-`sorry`. The core theorems use only `propext` and `Quot.sound`. Flattening uses
-classical logic.
+`sorry`. The theorems use only Lean's standard axioms (`propext`, `Quot.sound`, and
+`Classical.choice` where flattening decides visibility classically). Computational
+examples are evaluated by `decide` in the kernel.
 
 ## Contents
 
 | File | Formalizes | Scala counterpart |
 |---|---|---|
+| **Core** | | |
 | `Term.lean` | Terms `var`/`const`/`app`/`bind`, de Bruijn shifting and substitution, closedness | `api/objects/Obj.scala` (`OMV`, `OMS`, `OMA`, `OMBIND`) |
-| `Translation.lean` | Homomorphic translation along morphisms, identity, composition, functoriality, commutation with shifting and substitution | `Library.ApplyMorphs`, `api/objects/Translator.scala` |
+| `Translation.lean` | Homomorphic translation along morphisms, functoriality, commutation with shifting and substitution | `Library.ApplyMorphs`, `api/objects/Translator.scala` |
 | `Judgment.lean` | Flat signatures, judgments, abstract `Foundation`, derivability, well-typed morphisms, **judgment preservation**, category of theories | `api/checking/{Rules,Solver}.scala`, `api/objects/Judgements.scala` |
-| `LF.lean` | LF as a concrete foundation, with proofs that its rules are stable under translation and context extension | `mmt-lf` |
-| `STLC.lean` | A second foundation (simply typed λ-calculus); foundation morphisms and their preservation theorem; the embedding of STLC into LF | foundation-independence, meta-theory morphisms |
-| `LFMeta.lean` | Metatheory of LF: de Bruijn identities, scoping, inner weakening and the substitution lemma | `mmt-lf` |
-| `Modules.lean` | Theories with meta-theories, includes and structure declarations; libraries, visibility, flattening (including structure copies), views, view checking, structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
-| `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
-| `StructurePushout.lean` | Flattening a theory with a structure declaration is the pushout of `Pushout.lean`, and the structure morphism is the pushout morphism | `api/symbols/Structure.scala` |
-| `PartialView.lean` | Partial morphisms and partial translation, preservation on the domain of definition, totality, composition, partial views in the module system | `api/modules/View.scala` (partial views) |
-| `Diagrams.lean` | Diagrams; linear functors given by systematic renaming, with functor laws; connectors and naturality; composition, union, and connecting a diagram to its image | `api/modules/diagrams/{Diagram,LinearFunctor,LinearConnector,MetaOperators}.scala`, `SystematicRenamer` |
-| `DiagramOps.lean` | Meta-operators: union, difference, rebase, subsumption and closure of diagrams of module names; sequencing and zipping of operators on typed diagrams | `api/modules/diagrams/{Diagram,MetaOperators,ZippingOperator}.scala` |
-| `PushoutFunctor.lean` | The pushout functor along a meta-theory morphism `m : M → M'`: theories, morphisms, connectors, functor laws | `api/modules/diagrams/PushoutOperator.scala` (`PushoutFunctor`, `PushoutConnector`) |
-| `Homomorphism.lean` | The homomorphism functor on first-order signatures over a logic `SFOL`: the theory `Hom(Σ)` of homomorphisms between two models, its well-formedness, its action on signature morphisms, and the projections | diagram operators (homomorphism functor) |
-| `HomView.lean` | The homomorphism functor on views that send operations to compound terms: proof terms built by induction on the term, multi-step β-reduction, and conversion to the translated axiom | diagram operators (homomorphism functor) |
-| `ViewChecker.lean` | Executable checkers for theories (declaration by declaration) and views over a library: computable visibility and flattening (sound), a decidable completeness certificate for the visible theories, and soundness of both checks | `api/checking/MMTStructureChecker.scala` (view checking) |
-| `CheckerComplete.lean` | Completeness of the checker for syntax-directed LF typing | `api/checking/Solver.scala` |
-| `Unknowns.lean` | Unknowns as in MMT's Solver: solutions as morphisms, transport of derivations, first-order unification, and solving followed by checking | `api/checking/Solver.scala` (unknowns, solutions) |
-| `Checker.lean` | An executable type checker for LF (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer, hence is sound by construction | `api/checking/{Solver,Rules}.scala`, `mmt-lf` rules |
-| `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, `Bimagma` with two structures `add, mul : Magma`, and runs of the checker. Each is checked and used to transport a typing derivation | — |
+| **Foundations** | | |
+| `LF.lean` | LF as a foundation; its rules are stable under translation and context extension | `mmt-lf` |
+| `LFMeta.lean` | Metatheory of LF: de Bruijn identities, scoping, inner weakening, substitution lemma | `mmt-lf` |
+| `STLC.lean` | A second foundation (simply typed λ-calculus); foundation morphisms; the embedding of STLC into LF | foundation-independence, meta-theory morphisms |
+| **Module system** | | |
+| `Modules.lean` | Theories with meta-theories, includes and structures; visibility; flattening (including structure copies); views; structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
+| `Pushout.lean` | Pushout of a theory extension along a morphism, with renaming and assignments; universal property; structures as pushouts | `api/symbols/Structure.scala`, `PushoutOperator.scala` |
+| `StructurePushout.lean` | Flattening a structure declaration is literally that pushout | `api/symbols/Structure.scala` |
+| `PartialView.lean` | Partial morphisms, partial translation, preservation, totality, composition, partial views | `api/modules/View.scala` |
+| **Diagram operators** | | |
+| `Diagrams.lean` | Diagrams; linear functors by systematic renaming; functor laws; connectors; composition, union, connect | `api/modules/diagrams/{Diagram,LinearFunctor,LinearConnector}.scala`, `SystematicRenamer` |
+| `DiagramOps.lean` | Meta-operators: union, difference, rebase, subsumption, closure; sequencing and zipping | `api/modules/diagrams/{Diagram,MetaOperators,ZippingOperator}.scala` |
+| `PushoutFunctor.lean` | The pushout functor along a meta-theory morphism | `PushoutOperator.scala` (`PushoutFunctor`, `PushoutConnector`) |
+| `Homomorphism.lean` | The homomorphism functor on first-order signatures: `Hom(Σ)`, its well-formedness, its action on signature morphisms, the projections | diagram operators (homomorphism functor) |
+| `HomView.lean` | The homomorphism functor on views that send operations to compound terms | diagram operators (homomorphism functor) |
+| **Checking** | | |
+| `Checker.lean` | An executable LF type checker (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer | `api/checking/{Solver,Rules}.scala` |
+| `CheckerComplete.lean` | Completeness of the checker for syntax-directed typing | `api/checking/Solver.scala` |
+| `Unknowns.lean` | Unknowns: solutions as morphisms, unification, solved unknowns as definitions, type reconstruction | `api/checking/Solver.scala` |
+| `ViewChecker.lean` | Executable theory and view checkers over a library; computable visibility and flattening | `api/checking/MMTStructureChecker.scala` |
+| **Examples** | | |
+| `Example.lean` | Magmas, natural numbers, `Bimagma` with two structures; views in and out of it; theory and view checks; `Hom(Magma)`; implicit arguments | — |
 
 ## Main results
 
+### Core
+
 * `Term.trans_comp`, `Subst.comp_assoc`, `Term.trans_id`: translation is functorial.
 * `Term.trans_inst`: translation commutes with substitution, `σ(t[u/x]) = σ(t)[σ(u)/x]`.
-* `Derivable.trans` (**judgment preservation**): if `σ : S → T` is a well-typed
-  morphism, then every judgment derivable over `S` translates to one derivable over `T`.
-  This holds for any foundation whose rules are schematic.
-* `IsMorphism.id`, `IsMorphism.comp`, `IsMorphism.incl`, and `Mor.comp_assoc` /
-  `Mor.id_comp` / `Mor.comp_id`: theories and well-typed morphisms form a category,
-  and inclusions are morphisms.
-* `LF.foundation`: LF meets the foundation interface, so the preservation theorem
-  applies to all LF-based theories.
-* Foundation-independence:
-  * `STLC.foundation`: the simply typed λ-calculus is a second foundation, so all
-    generic results (judgment preservation, the category of theories, pushouts,
-    structures) apply to it;
-  * `FMor.preserves`: a *foundation morphism* translates terms so that every rule of
-    the source foundation is derivable in the target. It transports every derivation,
-    over the translated signature;
-  * `stlcToLF`: STLC embeds into LF (`tp ↦ type`, `→ ↦ Π`, `λ ↦ λ`). The formation rule
-    for function types is derived using weakening in LF;
-  * `STLC.Example.ssz_LF`: `s (s z) : N`, derived in STLC, read in LF.
+* `Derivable.trans` (**judgment preservation**): a well-typed morphism `σ : S → T` maps
+  every judgment derivable over `S` to one derivable over `T`, for any foundation whose
+  rules are schematic.
+* `IsMorphism.id`, `IsMorphism.comp`, `IsMorphism.incl`, `Mor.comp_assoc`,
+  `Mor.id_comp`, `Mor.comp_id`: theories and well-typed morphisms form a category, and
+  inclusions are morphisms.
+
+### Foundations and the metatheory of LF
+
+* `LF.foundation`: LF meets the foundation interface.
 * `LF.scoping`: in a derivable judgment, all terms use only variables of the context.
   So checked declarations are closed (`DeclOK.closed`).
-* `LF.weaken`: inner weakening is admissible in LF. A variable can be inserted at any
-  position of the context.
-* `LF.subst`: the substitution lemma for LF. If `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then
+* `LF.weaken`: inner weakening. A variable can be inserted at any position of the
+  context.
+* `LF.subst`: the substitution lemma. If `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then
   `Δ[u/x], Γ ⊢ J[u/x]`. Both lemmas assume the signature's declarations are closed.
+* `STLC.foundation`: the simply typed λ-calculus is a second foundation, so all
+  generic results apply to it.
+* `FMor.preserves`: a *foundation morphism* translates terms so that every source rule
+  is derivable in the target. It transports every derivation.
+* `stlcToLF`: STLC embeds into LF (`tp ↦ type`, `→ ↦ Π`, `λ ↦ λ`), using weakening in LF;
+  `STLC.Example.ssz_LF` reads an STLC derivation in LF.
+
+### Module system
+
 * `Visible.isMorphism`: include and meta-theory paths are morphisms between flattenings.
 * `View.isMorphism_of_check`: it is enough to check a view's assignments locally.
-* `structMor_isMorphism`, `structMor_preserves`: a `structure s : S` declared in a
-  theory `H` induces a well-typed morphism `flat S → flat H`. It sends shared
-  constants to themselves and the others to their copies `H?s/c`.
-* `flat_struct_eq_pushout`: if `H` declares `structure s : Sdom`, then `flat H` *is* the
-  pushout of `flat Sdom` along the identity on the constants shared with `H`. The base
-  of the pushout is `H` without the copies made by `s`. `poMor_eq_structMor` shows that
-  the pushout morphism coincides with `structMor` on `Sdom`.
-* `flat_struct_universal`: so the host theory has the universal property of a pushout,
-  with the structure morphism as one of its legs.
-* `pushout_isMorphism`, `pushout_incl`, `pushout_commutes`: the pushout square of
-  well-typed morphisms. `σ' : S' → T'` is well-typed, `T ⊆ T'`, and `σ'` agrees with
-  `σ` on `S`.
-* `pushout_universal`: every cocone `τ : T → U`, `μ : S' → U` with `μ|S = σ;τ` that
-  respects the assignments factors through a well-typed mediating morphism `T' → U`.
-  That morphism is unique on the constants of `T'`.
-* `Structure.isMorphism`, `Structure.preserves`: an MMT structure `s : S` in `T` induces a
-  well-typed morphism `S → T'`. Every judgment of `S` holds in `T'` after renaming.
-* `Example.natArith_plus_xx`: derives `x : N ⊢ plus x x : N` from
-  `x : U ⊢ op x x : U` by applying the preservation theorem to the view.
-* `Example.bimagma_addop_xx`: the same derivation, transported along the structure
-  `add`, gives `x : add/U ⊢ add/op x x : add/U` in `Bimagma`.
+* `structMor_isMorphism`, `structMor_preserves`: a `structure s : S` declared in `H`
+  induces a well-typed morphism `flat S → flat H`. Shared constants go to themselves,
+  the others to their copies `H?s/c`.
+* `pushout_isMorphism`, `pushout_incl`, `pushout_commutes`, `pushout_universal`: the
+  pushout square and its universal property. The mediating morphism exists and is
+  unique on the constants of the pushout.
+* `flat_struct_eq_pushout`, `poMor_eq_structMor`, `flat_struct_universal`: flattening a
+  structure declaration *is* the pushout, and the structure morphism is the pushout
+  morphism.
 * Partial views:
   * `Term.ptrans_eq_some_iff`: partial translation is defined exactly on terms built
-    from defined constants, and then equals the total translation;
-  * `IsPartialMorphism.preserves`, `typing_ptrans`: judgments over the domain of
-    definition are preserved;
-  * `IsPartialMorphism.total_of_cover`, `of_total`: total and partial morphisms;
-  * `IsPartialMorphism.comp`: partial morphisms compose;
-  * `View.toPartial_total`, `View.WellTyped.toPartial`: module-level partial views.
-* Diagram operators:
-  * `LinFunctor.mor_isMorphism`: linear functors map well-typed morphisms to well-typed
-    morphisms;
-  * `LinFunctor.mor_id`, `LinFunctor.mor_comp`: the functor laws, as equations;
-  * `LinFunctor.unit_isMorphism`, `LinFunctor.naturality`: the connector `S → F(S)` is
-    a natural transformation;
-  * `LinFunctor.comp_obj`, `comp_mor`: composing functors gives a functor;
-  * `Diagram.map_wf`, `union_wf`, `connect_wf`: the operators preserve
-    well-formedness of diagrams;
-  * `Diagram.map_commutes`: they preserve commuting squares.
+    from defined constants;
+  * `IsPartialMorphism.preserves`: judgments over the domain of definition are
+    preserved;
+  * `total_of_cover`, `of_total`: totality;
+  * `IsPartialMorphism.comp`: composition;
+  * `View.WellTyped.toPartial`: partial views in the module system.
+
+### Diagram operators
+
+* Renaming functors:
+  * `LinFunctor.mor_isMorphism`: they preserve well-typed morphisms;
+  * `mor_id`, `mor_comp`: the functor laws, as equations;
+  * `unit_isMorphism`, `naturality`: the connectors are natural;
+  * `comp_obj`, `comp_mor`: functors compose;
+  * `Diagram.map_wf`, `union_wf`, `connect_wf`, `map_commutes`: well-formedness and
+    commuting squares are preserved.
 * Meta-operators:
-  * `NDiagram.mem_union_modules`, `mem_allModules_union`, `mem_difference`,
-    `allModules_rebase`: what union, difference and rebase contain;
-  * `NDiagram.union_subsumes_left`, `union_subsumes_right`: the union subsumes both
-    arguments;
-  * `NDiagram.closure_iff`: MMT's iterative closure computes exactly the least set of
-    theories reachable by includes and structures outside the meta-diagram;
-  * `NDiagram.closure_complete`, `InClosure.closed`: the closure together with its
-    meta-diagram is closed under dependencies;
-  * `Diagram.sequenced_wf`, `Diagram.zipped_wf`: sequencing and zipping operators
-    preserve well-formedness.
-* Pushout functor:
-  * `PFData.mor_isMorphism`: the induced morphism `P(σ) : P(S) → P(T)` is well-typed;
-  * `PFData.naturality`: the connectors `S → P(S)` are natural;
-  * `PFData.mor_id`, `PFData.mor_comp`: the functor laws, from the uniqueness part of
-    the universal property;
-  * `PFData.mor_meta`: `P(σ)` is the identity on `M'`.
+  * membership lemmas for union, difference and rebase;
+  * `union_subsumes_left`, `union_subsumes_right`: the union subsumes both arguments;
+  * `closure_iff`: MMT's iterative closure computes exactly the least set of theories
+    reachable by includes and structures outside the meta-diagram;
+  * `closure_complete`: the closure together with its meta-diagram is closed under
+    dependencies;
+  * `sequenced_wf`, `zipped_wf`: sequencing and zipping preserve well-formedness.
+* Pushout functor: `PFData.mor_isMorphism`, `naturality`, `mor_id`, `mor_comp`,
+  `mor_meta`.
 * Homomorphism functor:
-  * `Hom.homAx_typed`: each homomorphism axiom
-    `f^h : Π x⃗:a⃗¹. ded (h_b (f¹ x⃗) = f² (h_{a₁} x₁) … (h_{aₙ} xₙ))` is well-typed in LF;
-  * `Hom.homSig_wf`: every declaration of `Hom(Σ)` is well-typed;
-  * `Hom.FOMor.hom_isMorphism`: `Hom(φ) : Hom(Σ) → Hom(Σ')` is a well-typed morphism;
-  * `Hom.FOMor.hom_id`, `hom_comp`: the functor laws;
-  * `Hom.proj_isMorphism`, `proj_naturality`: the projections `Σ → Hom(Σ)`, `c ↦ cᵏ`,
-    are natural morphisms;
-  * `Example.hom_op_typed`: the instance for magmas.
-* Homomorphism functor on views with compound terms (`HomView.lean`):
-  * `Hom.proofP_typed`: for a first-order term `t : b`, the proof term `P(t)` has type
-    `ded (h_b (t¹) = t²[h x⃗])`. It is built from the axioms `g^h` and the logic's
-    `refl`, `trans` and `cong`;
-  * `Hom.multiBeta`, `Hom.beta1`, `Hom.betaH`: `(λx⃗. tᵏ) u⃗` β-reduces to `tᵏ[u⃗]` for
-    variable-like arguments `u⃗`;
-  * `Hom.proofP_converted`: `P(t)` also has the translated axiom type, which contains
-    the β-redexes;
-  * `Hom.FOView.hom_isMorphism`: for a view `φ` that sends each operation `f` to a
-    term `λx⃗. t`, `Hom(φ) : Hom(Σ) → Hom(Σ')` is a well-typed morphism. It sends
-    `f^h` to `λx⃗. P(t)`;
-  * `Example.hom_plusZeroView`: the view `Magma → Nat`,
-    `op ↦ λx y. plus x (plus y zero)`.
-* Theory checker:
-  * `checkTheory_sound`: if the executable theory checker accepts a theory, every
-    declaration is well-formed over the theory up to that declaration (`TheoryWF`).
-    For a constant, its type is a type or kind and its definiens has that type. For a
-    structure (`StructOK`), the induced morphism is well-typed and every assignment
-    has the translated type;
-  * `checkStruct_sound`: the decidable check for structure declarations;
-  * `Example.bimagma_checks`, `magmaN_checks`, `magmaBad_rejected`: structures are
-    checked; an ill-typed assignment `op := N` is rejected;
-  * `Example.magma_checks`, `natArith_checks`, `bad_rejected`: `Magma` and `NatArith`
-    are checked by `decide`; a theory that uses a constant before declaring it is
-    rejected.
-* Computable flattening:
-  * `visDec_iff`: when the theories reached from `T` are closed under edges (a decidable
-    certificate), visibility from `T` is decidable;
-  * `flatB_sub`, `flatB_eq`: the computable flattening, including structure copies, is
-    sound, and exact under the certificates.
-* View checker:
-  * `checkView_sound`: if the executable view checker accepts a view, the view is a
-    well-typed morphism between the flattenings;
-  * `Example.plusView_checks`, `plusView_wellTyped'`: the view `Magma → NatArith` is
-    checked by `decide`, replacing the hand proof;
-  * `Example.badView_rejected`: a view with an ill-typed assignment is rejected;
-  * `Example.addView_checks`, `bimagmaExt_checks`: a view into a theory with structures
-    (`U ↦ add/U`, `op ↦ add/op`) and a theory using structure copies are checked;
-  * `Example.bimagmaView_checks`, `bimagmaViewPartial_rejected`: a view *out of* a theory
-    with structures, assigning the copies `add/U, add/op, mul/U, mul/op`, is checked. A
-    view that forgets `mul/op` is rejected.
+  * `Hom.homAx_typed`, `homSig_wf`: every declaration of `Hom(Σ)` is well-typed,
+    including the axioms `f^h : Π x⃗. ded (h_b (f¹ x⃗) = f² (h x⃗))`;
+  * `Hom.FOMor.hom_isMorphism`, `hom_id`, `hom_comp`: functoriality on signature
+    morphisms;
+  * `Hom.proj_isMorphism`, `proj_naturality`: the projections `Σ → Hom(Σ)` are natural
+    morphisms;
+  * `Hom.FOView.hom_isMorphism`: for views that send operations to compound terms
+    `λx⃗. t`, `Hom(φ)` is well-typed. It sends `f^h` to a proof `λx⃗. P(t)` built from
+    `g^h`, `refl`, `trans` and `cong` (`proofP_typed`), moved to the translated axiom by
+    multi-step β-conversion (`multiBeta`, `proofP_converted`).
+
+### Checking
+
+* `LF.Checker.check_sound`, `eq_sound`: whatever the type checker accepts is
+  derivable.
+* `LF.Checker.infer_complete`, `check_complete`: the checker is complete for
+  syntax-directed typing (`Alg`).
 * Unknowns:
-  * `solution_isMorphism`, `solution_transport`: a solution whose terms have the
-    declared types of their unknowns is a well-typed morphism from the signature
-    extended by the unknowns back to the signature. So everything derived with
-    unknowns holds after instantiation;
-  * `unify_sound`: first-order unification returns a solution that makes both sides
-    equal;
-  * `solveCheck_sound`: solving constraints and then checking the instance is sound;
-  * `checkSolved_sound`: as in MMT's Solver, solved unknowns `?x : A := t` are
-    definitions in the checking context, unfolded by δ-conversion. Checking with them,
-    and checking each solution, gives the instantiated judgment without unknowns;
-  * `elaborate_sound`: type reconstruction. An untrusted pass generates the constraints,
-    unification solves them and the trusted checker verifies the instance;
-  * `Example.idApp_solved`, `idApp_checkSolved`, `idApp_reconstructed`: the implicit
-    argument of `id ?A c : N` is solved to `N` by unification, as a solved definition,
-    and by type reconstruction without user-given constraints.
-* Checker:
-  * `LF.Checker.check_sound`, `eq_sound`: whatever the checker accepts is derivable;
-  * `LF.Checker.infer_complete`, `check_complete`: the checker is complete for
-    syntax-directed typing (`Alg`: variables, constants, universes, Π, λ and application,
-    with argument types matching exactly). With enough fuel it infers exactly the
-    derived type and accepts;
-  * `Example.check_conv`, `check_beta`, `reject_op_x`: runs of the checker, evaluated
-    by `decide` in the kernel. They cover conversion via a definition, β-equality,
-    and the rejection of an ill-typed term.
+  * `solution_transport`: a well-typed solution is a morphism from the signature
+    extended by the unknowns, so everything derived with unknowns holds after
+    instantiation;
+  * `unify_sound`: first-order unification is sound;
+  * `checkSolved_sound`: solved unknowns as definitions, unfolded by δ;
+  * `elaborate_sound`: type reconstruction. Untrusted constraint generation,
+    unification, then a trusted check.
+* Computable flattening: `visDec_iff`, `flatB_sub`, `flatB_eq`. Visibility is decidable
+  under a decidable completeness certificate. The computable flattening, including
+  structure copies, is sound, and exact under the certificates.
+* `checkTheory_sound`: an accepted theory is well-formed, declaration by declaration
+  (`TheoryWF`). Constants are typed. For structures (`StructOK`), the induced morphism is
+  well-typed and the assignments are typed.
+* `checkView_sound`: an accepted view is a well-typed morphism. Structures may occur in
+  the codomain and in the domain.
+
+### Examples (`Example.lean`)
+
+* Transport along a view and a structure: `natArith_plus_xx`, `bimagma_addop_xx`.
+* Type checker: `check_conv`, `check_beta`, `reject_op_x`.
+* Theory checker:
+  * `magma_checks`, `natArith_checks`, `bimagma_checks`: theories are accepted;
+  * `magmaN_checks`: a structure with an assignment is accepted;
+  * `bimagmaExt_checks`: a theory using structure copies is accepted;
+  * `bad_rejected`, `magmaBad_rejected`: a use before declaration and an ill-typed
+    assignment are rejected.
+* View checker:
+  * `plusView_checks`: the view `Magma → NatArith`, replacing the hand proof
+    `plusView_wellTyped`;
+  * `addView_checks`: a view into `Bimagma`, through the structure copies;
+  * `bimagmaView_checks`: a view out of `Bimagma`;
+  * `badView_rejected`, `bimagmaViewPartial_rejected`: an ill-typed view and an
+    incomplete view are rejected.
+* Homomorphism functor: `hom_op_typed` (`Hom(Magma)`), `hom_plusZeroView` (the view
+  `op ↦ λx y. plus x (plus y zero)`).
+* Unknowns: the implicit argument of `id ?A c : N`, solved by unification
+  (`idApp_solved`), as a solved definition (`idApp_checkSolved`), and by
+  reconstruction (`idApp_reconstructed`).
 
 ## Modelling choices and scope
 
@@ -208,60 +187,45 @@ classical logic.
   * stability under outer context extension.
 
   MMT's design relies on both of these without stating them.
-* Constants come with optional types and definitions. The module system adds the lookup
-  rule `c : A` and the definition rule `c ≡ d : A`.
-* Global names are qualified by their home theory. So flattening is a lookup filtered by
-  visibility and needs no renaming.
-* Local names are either base names or structure copies `LName.sub s S c`, MMT's
-  complex names `[S]/s/c`. The declaration of a copy is computed by recursion on its
-  local name: it is the original declaration, translated along the structure.
-* In the module layer, a structure shares the constants that are already visible in
-  the host, such as the meta-theory, and copies all the others.
-* Pushouts and structures are built on flat signatures. The fresh names (MMT's
-  `T?s/c`) come from an abstract injective `Renaming`. Assignments may only define
-  copied constants that have no definiens. The universal property assumes that the
-  host and the extension are closed, i.e. their declarations refer only to their own
-  constants.
+* Constants have optional types and definitions. The module system adds the rules
+  `c : A` and `c ≡ d : A`.
+* Global names are qualified by their home theory, so flattening is a lookup filtered
+  by visibility. Local names are base names or structure copies `LName.sub s S c`,
+  MMT's complex names. A structure shares the constants already visible in the host
+  and copies the others.
+* Pushouts on flat signatures use an abstract injective renaming for fresh names.
+  Assignments only define copied constants without definiens. The universal property
+  assumes closed signatures.
 * A partial morphism is modelled as a total morphism out of its domain of definition.
-  Judgments over the whole domain are not preserved in general, because their
-  derivations may use undefined constants. MMT's option of expanding the definition
-  of an unassigned defined constant is not modelled.
-* Linear functors are modelled as systematic renamings. Each declaration yields one
-  declaration whose type is translated along the renaming. This covers renaming and
-  copying operators.
-* The pushout functor applies to theories `S ⊇ M` whose declarations only refer to
-  their own constants, and to morphisms that are the identity on `M`.
-* The homomorphism functor is defined for first-order signatures (sorts and
-  operations) over a logic meta-theory with `prop`, `ded` and polymorphic `eq`. Its
-  action on morphisms covers signature morphisms, which send sorts to sorts and
-  operations to operations with matching profiles. `HomView.lean` extends this to
-  views that send operations to compound first-order terms. There, `f^h` is sent to a
-  proof built by induction on the term, which needs `refl`, `trans` and `cong` in the
-  logic.
-* `HomView.lean` was written before the substitution lemma (`LFMeta.lean`) existed. It
-  keeps every intermediate term the encoding of a first-order term under a valuation
-  by variable-like atoms, and proves its typing directly.
+  MMT's option of expanding the definition of an unassigned defined constant is not
+  modelled.
+* Linear functors are modelled as systematic renamings, each declaration yielding one
+  declaration. The pushout and homomorphism functors are formalized separately.
+* The homomorphism functor works on first-order signatures (sorts and operations) over
+  a logic meta-theory `SFOL` with `prop`, `ded`, polymorphic `eq`, `refl`, `trans` and
+  `cong`. For compound-term views, the functor laws hold only up to equality of proofs.
+* `HomView.lean` predates the substitution lemma. It keeps intermediate terms as
+  encodings of first-order terms under variable-like valuations, and types them
+  directly.
 * In the LF rule for Π-congruence, the universe of the codomain premise is lifted
-  (`U.liftN 1 0`), as de Bruijn indexing requires. This makes the rule stable under
-  weakening and substitution.
-* For compound-term views the functor laws hold only up to equality of proofs: for
-  example, `Hom(φ;ψ)(f^h)` and `(Hom φ;Hom ψ)(f^h)` are different proof terms of the
-  same type. Proving them equal would need proof irrelevance in the logic.
-* The view checker allows structures in the codomain and in the domain itself. The
-  domain's structures must have domains without structures, and the other theories
-  visible from the domain must declare none. It checks that the theories visible from the domain are
-  visible from the codomain, and that their declarations do not mention the domain.
-  Other views are rejected. The structure check requires the theories shared between
-  the structure's domain and the host to declare no structures, and assignments to
-  define base constants without definiens.
-* The checker is a model of the Solver's architecture, not a verification of the Scala
-  code. It is sound by construction, since every answer carries its derivation. It
-  works with fuel; it is complete for syntax-directed typing (`CheckerComplete.lean`).
-* Not yet covered:
-  * the homomorphism functor on signatures beyond first-order ones (predicates,
-    axioms, dependent types), and its functor laws up to proof irrelevance for
-    compound-term views;
-  * the Solver's delayed constraints and higher-order pattern unification (unknowns,
-    solutions, first-order unification and type reconstruction are covered);
-  * completeness of the checker beyond syntax-directed typing (with conversion), which
-    would need normalization and confluence of β-reduction.
+  (`U.liftN 1 0`), as de Bruijn indexing requires.
+* The checkers model MMT's architecture; they are not a verification of the Scala
+  code. The type checker is sound by construction (every answer carries its
+  derivation), uses fuel, and is complete for syntax-directed typing. The theory and
+  view checkers:
+  * require visibility certificates;
+  * allow structures in the codomain of a view and in its domain, but the domain's
+    structures must have structure-free domains, and the other visible theories must
+    declare no structures;
+  * require structure assignments to define base constants without definiens.
+
+  Other inputs are rejected (soundly).
+
+## Not yet covered
+
+* The homomorphism functor beyond first-order signatures (predicates, axioms,
+  dependent types), and its functor laws up to proof irrelevance for compound-term
+  views.
+* The Solver's delayed constraints and higher-order pattern unification.
+* Completeness of the checker with conversion, which would need normalization and
+  confluence of β-reduction.
