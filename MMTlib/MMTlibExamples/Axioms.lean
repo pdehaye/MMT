@@ -75,3 +75,9 @@ if this changes.
 /-- info: 'MMT.NDiagram.closure_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms MMT.NDiagram.closure_iff
 
+/-- info: 'MMT.Hom.predAx_typed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms MMT.Hom.predAx_typed
+
+/-- info: 'MMT.Hom.FOMorP.hom_isMorphism' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms MMT.Hom.FOMorP.hom_isMorphism
+

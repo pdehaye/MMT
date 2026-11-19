@@ -1,5 +1,6 @@
 import MMTlibExamples.Algebra
 import MMTlib.Diagrams.Homomorphism.Views
+import MMTlib.Diagrams.Homomorphism.Predicates
 
 /-!
 # The homomorphism functor on magmas
@@ -89,5 +90,31 @@ theorem hom_plusZeroView :
     IsMorphism LF.foundation (Hom.homSig "HomMagma" magmaFO) (Hom.homSig "HomNat" natFO)
       (plusZeroView.hom "HomMagma" "HomNat") :=
   Hom.FOView.hom_isMorphism (by decide) (by decide) (by decide)
+
+/-! ### Ordered magmas: a predicate
+
+An ordered magma adds `le : U U`. `Hom` declares
+`le^h : Π x y : U¹. ded (le¹ x y) → ded (le² (U^h x) (U^h y))`. -/
+
+def orderPreds : Hom.Preds magmaFO where
+  pred? n := if n = "le" then some ["U", "U"] else none
+  not_sort n as h := by
+    by_cases hn : n = "le"
+    · subst hn; decide
+    · simp [hn] at h
+  not_op n as h := by
+    by_cases hn : n = "le"
+    · subst hn; simp [magmaFO]
+    · simp [hn] at h
+  sorts n as h := by
+    by_cases hn : n = "le"
+    · simp [hn] at h; subst h; simp [magmaFO]
+    · simp [hn] at h
+
+/-- The preservation axiom for `le` is well-typed. -/
+theorem hom_le_typed :
+    Hom.D (Hom.homSigP "HomOMagma" magmaFO orderPreds)
+      (.typing [] (Hom.predAx "HomOMagma" magmaFO "le" ["U", "U"]) LF.type) :=
+  Hom.predAx_typed (by decide) (by simp [orderPreds])
 
 end MMT.Example

@@ -15,6 +15,7 @@ import MMTlib.Diagrams.MetaOperators
 import MMTlib.Diagrams.PushoutFunctor
 import MMTlib.Diagrams.Homomorphism.Basic
 import MMTlib.Diagrams.Homomorphism.Views
+import MMTlib.Diagrams.Homomorphism.Predicates
 import MMTlib.Checking.TypeChecker
 import MMTlib.Checking.Completeness
 import MMTlib.Checking.Unknowns

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+* The homomorphism functor for signatures with predicates
+  (`MMTlib.Diagrams.Homomorphism.Predicates`): preservation axioms
+  `p^h : Π x⃗. ded (p¹ x⃗) → ded (p² (h x⃗))`, well-formedness, and functoriality for
+  morphisms mapping predicates to predicates.
+
 ## 0.1.0
 
 First release of MMTlib as a Lean library, reorganized from the `formalization/`
