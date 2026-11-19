@@ -8,7 +8,8 @@ MMTlib is a Lean 4 library formalizing MMT, without dependencies (no Mathlib). I
 * the module system (theories, includes, structures, views, partial views) and pushouts;
 * diagram operators;
 * executable checkers that are proved sound: a type checker, a theory checker and a
-  view checker, plus unknowns with unification and type reconstruction.
+  view checker, a β-conversion check, plus unknowns with first-order and higher-order
+  pattern unification, delayed constraints, and type reconstruction.
 
 ```bash
 cd MMTlib
@@ -19,7 +20,7 @@ lake build --wfail  # as CI does: warnings (including `sorry`) are errors
 
 The toolchain is pinned in `lean-toolchain` (Lean 4.36.0). The build contains no
 `sorry`. The theorems use only Lean's standard axioms (`propext`, `Quot.sound`, and
-`Classical.choice` where flattening decides visibility classically). Computational
+in some cases `Classical.choice`). Computational
 examples are evaluated by `decide` in the kernel.
 
 ## Using MMTlib
@@ -313,8 +314,9 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
   proof irrelevance.
 * Most-generality of pattern unification, and the Solver's other strategies (type-directed
   rules, η, unknowns in contexts).
-* Completeness of the checker with conversion. Confluence of β-reduction is proved;
-  normalization of well-typed terms and subject reduction are not.
+* Completeness of the checker with conversion. Confluence of β-reduction is proved,
+  and so is subject reduction for STLC; normalization, and subject reduction for LF
+  (which needs injectivity of Π under βη-conversion), are not.
 
 ## License
 
