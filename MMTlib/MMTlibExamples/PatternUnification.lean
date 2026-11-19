@@ -8,7 +8,7 @@ solved by `?F := λx:N. succ x`, which the sound checker then checks against `N 
 The constraint holds only up to β: `(λx:N. succ x) x ⟶β succ x`.
 -/
 
-namespace MMT.Example
+namespace MMT.Example.Pattern
 
 open LF
 
@@ -46,4 +46,4 @@ example : ∃ θ : Subst, Solution θ ∧
     have hP : θ piN = .const piN := hsol.fix piN (by decide)
     simpa [Term.trans, LF.arrow, hN, hP, Term.liftN] using hd
 
-end MMT.Example
+end MMT.Example.Pattern

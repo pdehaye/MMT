@@ -7,7 +7,7 @@ import MMTlib
 shows that it is the only normal form of the term, whatever the reduction order.
 -/
 
-namespace MMT.Example
+namespace MMT.Example.Reduction
 
 open LF
 
@@ -56,4 +56,4 @@ example : ¬ Conv (.app (.app (kComb (cst "A")) (cst "a")) (cst "b"))
 example : ¬ Normal (lam (cst "A") (.app (.app (kComb (cst "A")) (.var 0)) (.var 0))) := by
   decide
 
-end MMT.Example
+end MMT.Example.Reduction
