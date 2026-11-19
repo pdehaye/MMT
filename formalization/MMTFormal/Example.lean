@@ -343,4 +343,10 @@ theorem idApp_solved :
   simpa [idApp, Term.trans, hsol.fix gId (by decide), hsol.fix gC (by decide),
     hsol.fix gNat (by decide), hA] using hd
 
+/-- The same, the MMT way: the solved unknown `?A : type := N` is a definition, so checking
+`id ?A c : N` unfolds it by δ-conversion; instantiating gives `id N c : N`. -/
+theorem idApp_checkSolved :
+    checkSolved polySig [⟨.base "A", LF.type, .const gNat⟩] [] idApp (.const gNat) = true := by
+  decide
+
 end MMT.Example

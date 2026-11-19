@@ -137,7 +137,11 @@ classical logic.
   * `unify_sound`: first-order unification returns a solution that makes both sides
     equal;
   * `solveCheck_sound`: solving constraints and then checking the instance is sound;
-  * `Example.idApp_solved`: the implicit argument of `id ?A c : N` is solved to `N`.
+  * `checkSolved_sound`: as in MMT's Solver, solved unknowns `?x : A := t` are
+    definitions in the checking context, unfolded by δ-conversion. Checking with them,
+    and checking each solution, gives the instantiated judgment without unknowns;
+  * `Example.idApp_solved`, `Example.idApp_checkSolved`: the implicit argument of
+    `id ?A c : N` is solved to `N`, both by unification and as a solved definition.
 * Checker:
   * `LF.Checker.check_sound`, `eq_sound`: whatever the checker accepts is derivable;
   * `Example.check_conv`, `check_beta`, `reject_op_x`: runs of the checker, evaluated

@@ -292,4 +292,95 @@ theorem solveCheck_sound {S : Sig} {n : Nat} {cs : List (Term × Term)} {Γ : Ct
     · cases h
   · cases h
 
+/-! ## Solved unknowns as definitions
+
+Once an unknown is solved, MMT's `Solver` records the solution as its definiens, so that
+further checking unfolds it by δ-conversion. Here a list of solved unknowns
+`?x : A := t` is turned into declarations, the judgment is checked with them, and each
+solution is checked against its (instantiated) type. -/
+
+/-- A solved unknown `?name : tp := sol`. -/
+structure Solved where
+  name : LName
+  tp : Term
+  sol : Term
+
+/-- Look up a solved unknown. -/
+def findSolved (us : List Solved) (c : GName) : Option Solved :=
+  if isUnknown c then us.find? (fun u => u.name == c.name) else none
+
+/-- The declarations of the solved unknowns. -/
+def solvedSig (us : List Solved) : Sig := fun c =>
+  (findSolved us c).map fun u => ⟨some u.tp, some u.sol⟩
+
+/-- The solution of the solved unknowns. -/
+def solvedSubst (us : List Solved) : Subst := fun c =>
+  match findSolved us c with
+  | some u => u.sol
+  | none => .const c
+
+/-- Decidable version of `NoUnknowns`. -/
+def noUnkB : Term → Bool
+  | .var _ => true
+  | .const c => !isUnknown c
+  | .app f a => noUnkB f && noUnkB a
+  | .bind b A t => noUnkB b && noUnkB A && noUnkB t
+
+theorem noUnkB_sound : ∀ {t : Term}, noUnkB t = true → NoUnknowns t
+  | .var _, _ => trivial
+  | .const c, h => by simpa [noUnkB, NoUnknowns, Term.UsesOnly] using h
+  | .app f a, h => by
+    simp only [noUnkB, Bool.and_eq_true] at h
+    exact ⟨noUnkB_sound h.1, noUnkB_sound h.2⟩
+  | .bind b A t, h => by
+    simp only [noUnkB, Bool.and_eq_true] at h
+    exact ⟨noUnkB_sound h.1.1, noUnkB_sound h.1.2, noUnkB_sound h.2⟩
+
+/-- Check a judgment in the presence of solved unknowns, and check the solutions. -/
+def checkSolved (S : Sig) (us : List Solved) (Γ : Ctx) (t A : Term) : Bool :=
+  LF.Checker.typeCheck (S.withUnknowns (solvedSig us)) Γ t A &&
+  us.all fun u => closedB 0 u.sol && noUnkB u.sol &&
+    LF.Checker.typeCheck S [] u.sol (u.tp.trans (solvedSubst us))
+
+theorem findSolved_mem {us : List Solved} {c : GName} {u : Solved}
+    (h : findSolved us c = some u) : u ∈ us ∧ isUnknown c = true := by
+  unfold findSolved at h
+  split at h
+  · exact ⟨List.mem_of_find?_eq_some h, by assumption⟩
+  · cases h
+
+/-- **Soundness of checking with solved unknowns**: the judgment instantiated with the
+solutions is derivable without unknowns. -/
+theorem checkSolved_sound {S : Sig} {us : List Solved} {Γ : Ctx} {t A : Term}
+    (hS : ∀ c i, S c = some i → (∀ A, i.tp = some A → NoUnknowns A) ∧
+      ∀ e, i.df = some e → NoUnknowns e)
+    (h : checkSolved S us Γ t A = true) :
+    Derivable LF.foundation S (.typing (Γ.map (·.trans (solvedSubst us)))
+      (t.trans (solvedSubst us)) (A.trans (solvedSubst us))) := by
+  simp only [checkSolved, Bool.and_eq_true, List.all_eq_true] at h
+  obtain ⟨hJ, hus⟩ := h
+  have hsol : Solution (solvedSubst us) := by
+    refine ⟨fun c => ?_, fun c hc => ?_⟩
+    · unfold solvedSubst
+      split
+      · rename_i u hu
+        exact closedB_sound (hus u (findSolved_mem hu).1).1.1
+      · trivial
+    · unfold solvedSubst findSolved
+      simp [hc]
+  have := solution_transport (U := solvedSig us) hsol hS (fun x A' d hx hU => by
+    simp only [solvedSig, Option.map_eq_some_iff] at hU
+    obtain ⟨u, hu, hi⟩ := hU
+    simp only [ConstInfo.mk.injEq, Option.some.injEq] at hi
+    obtain ⟨rfl, rfl⟩ := hi
+    obtain ⟨⟨_, hnu⟩, hty⟩ := hus u (findSolved_mem hu).1
+    have hθx : solvedSubst us x = u.sol := by simp [solvedSubst, hu]
+    have htyped := LF.Checker.check_sound hty
+    refine ⟨by rw [hθx]; exact htyped, fun e he => ?_⟩
+    cases he
+    rw [hθx, hsol.trans_noUnknowns (noUnkB_sound hnu)]
+    exact .rule (LF.Rule.refl _ _ _) (by simpa using htyped))
+    (LF.Checker.check_sound hJ)
+  simpa [Judgment.trans] using this
+
 end MMT
