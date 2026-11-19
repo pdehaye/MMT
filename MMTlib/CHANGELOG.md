@@ -6,6 +6,10 @@
   (`MMTlib.Diagrams.Homomorphism.Predicates`): preservation axioms
   `p^h : Π x⃗. ded (p¹ x⃗) → ded (p² (h x⃗))`, well-formedness, and functoriality for
   morphisms mapping predicates to predicates.
+* The homomorphism functor for equational theories
+  (`MMTlib.Diagrams.Homomorphism.Axioms`): copies `axᵏ : Π x⃗. ded (sᵏ = tᵏ)` of the
+  axioms in both models, well-formedness, and functoriality for morphisms mapping
+  axioms to axioms.
 
 ## 0.1.0
 

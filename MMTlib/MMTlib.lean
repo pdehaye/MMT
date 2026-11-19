@@ -16,6 +16,7 @@ import MMTlib.Diagrams.PushoutFunctor
 import MMTlib.Diagrams.Homomorphism.Basic
 import MMTlib.Diagrams.Homomorphism.Views
 import MMTlib.Diagrams.Homomorphism.Predicates
+import MMTlib.Diagrams.Homomorphism.Axioms
 import MMTlib.Checking.TypeChecker
 import MMTlib.Checking.Completeness
 import MMTlib.Checking.Unknowns

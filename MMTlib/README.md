@@ -72,6 +72,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlib.Diagrams.PushoutFunctor` | The pushout functor along a meta-theory morphism | `PushoutOperator.scala` (`PushoutFunctor`, `PushoutConnector`) |
 | `MMTlib.Diagrams.Homomorphism.Basic` | The homomorphism functor on first-order signatures: `Hom(Σ)`, its well-formedness, its action on signature morphisms, the projections | diagram operators (homomorphism functor) |
 | `MMTlib.Diagrams.Homomorphism.Predicates` | The homomorphism functor for signatures with predicates: preservation axioms, well-formedness, functoriality | diagram operators (homomorphism functor) |
+| `MMTlib.Diagrams.Homomorphism.Axioms` | The homomorphism functor for equational theories: copies of the axioms in both models, well-formedness, functoriality | diagram operators (homomorphism functor) |
 | `MMTlib.Diagrams.Homomorphism.Views` | The homomorphism functor on views that send operations to compound terms | diagram operators (homomorphism functor) |
 | **Checking** | | |
 | `MMTlib.Checking.TypeChecker` | An executable LF type checker (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer | `api/checking/{Solver,Rules}.scala` |
@@ -169,6 +170,10 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
     `p^h : Π x⃗. ded (p¹ x⃗) → ded (p² (h x⃗))`. Everything is well-typed, and morphisms
     that map predicates to predicates induce well-typed morphisms. The extension is
     conservative (`homSig_sub_homSigP`);
+  * `Hom.eqAx_typed`, `homSigA_wf`, `FOMorA.hom_isMorphism`: for equational theories,
+    `Hom(Σ)` contains the copies `axᵏ : Π x⃗. ded (sᵏ = tᵏ)` of every axiom in both
+    models. Everything is well-typed, and morphisms mapping axioms to axioms induce
+    well-typed morphisms;
   * `Hom.FOView.hom_isMorphism`: for views that send operations to compound terms
     `λx⃗. t`, `Hom(φ)` is well-typed. It sends `f^h` to a proof `λx⃗. P(t)` built from
     `g^h`, `refl`, `trans` and `cong` (`proofP_typed`), moved to the translated axiom by
@@ -217,7 +222,8 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 * Homomorphism functor:
   * `hom_op_typed`: `Hom(Magma)`;
   * `hom_plusZeroView`: the view `op ↦ λx y. plus x (plus y zero)`;
-  * `hom_le_typed`: ordered magmas, with the predicate `le`.
+  * `hom_le_typed`: ordered magmas, with the predicate `le`;
+  * `hom_assoc_typed`: semigroups, with associativity.
 * Unknowns: the implicit argument of `id ?A c : N`, solved by unification
   (`idApp_solved`), as a solved definition (`idApp_checkSolved`), and by
   reconstruction (`idApp_reconstructed`).
@@ -246,8 +252,8 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
   modelled.
 * Linear functors are modelled as systematic renamings, each declaration yielding one
   declaration. The pushout and homomorphism functors are formalized separately.
-* The homomorphism functor works on first-order signatures (sorts, operations and
-  predicates) over
+* The homomorphism functor works on first-order signatures (sorts, operations,
+  predicates and equational axioms) over
   a logic meta-theory `SFOL` with `prop`, `ded`, polymorphic `eq`, `refl`, `trans` and
   `cong`. For compound-term views, the functor laws hold only up to equality of proofs.
 * `MMTlib.Diagrams.Homomorphism.Views` predates the substitution lemma. It keeps intermediate terms as
@@ -269,9 +275,10 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 
 ## Not yet covered
 
-* The homomorphism functor for axioms and dependent types, for compound-term views of
-  signatures with predicates (which would map predicates to formulas), and its functor
-  laws up to proof irrelevance for compound-term views.
+* The homomorphism functor for axioms beyond equations (which need logical
+  connectives), for dependent types, and for compound-term views of signatures with
+  predicates or axioms. Its functor laws for compound-term views, which hold only up to
+  proof irrelevance.
 * The Solver's delayed constraints and higher-order pattern unification.
 * Completeness of the checker with conversion, which would need normalization and
   confluence of β-reduction.

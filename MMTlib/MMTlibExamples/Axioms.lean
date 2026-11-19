@@ -81,3 +81,9 @@ if this changes.
 /-- info: 'MMT.Hom.FOMorP.hom_isMorphism' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms MMT.Hom.FOMorP.hom_isMorphism
 
+/-- info: 'MMT.Hom.eqAx_typed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms MMT.Hom.eqAx_typed
+
+/-- info: 'MMT.Hom.FOMorA.hom_isMorphism' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms MMT.Hom.FOMorA.hom_isMorphism
+

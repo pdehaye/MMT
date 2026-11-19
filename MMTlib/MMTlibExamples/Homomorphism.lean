@@ -1,6 +1,7 @@
 import MMTlibExamples.Algebra
 import MMTlib.Diagrams.Homomorphism.Views
 import MMTlib.Diagrams.Homomorphism.Predicates
+import MMTlib.Diagrams.Homomorphism.Axioms
 
 /-!
 # The homomorphism functor on magmas
@@ -116,5 +117,54 @@ theorem hom_le_typed :
     Hom.D (Hom.homSigP "HomOMagma" magmaFO orderPreds)
       (.typing [] (Hom.predAx "HomOMagma" magmaFO "le" ["U", "U"]) LF.type) :=
   Hom.predAx_typed (by decide) (by simp [orderPreds])
+
+/-! ### Semigroups: an equational axiom
+
+Associativity `assoc : ∀ x y z. (x·y)·z = x·(y·z)`, with `x = var 2`, `y = var 1`,
+`z = var 0`. `Hom(Semigroup)` contains a copy of it for each model. -/
+
+def opT (a b : Hom.FOT) : Hom.FOT := .app (.app (.cnst "op") a) b
+
+def assocL : Hom.FOT := opT (opT (.var 2) (.var 1)) (.var 0)
+def assocR : Hom.FOT := opT (.var 2) (opT (.var 1) (.var 0))
+
+theorem op_ws {a b : Hom.FOT} (ha : Hom.WS magmaFO ["U", "U", "U"] a [] "U")
+    (hb : Hom.WS magmaFO ["U", "U", "U"] b [] "U") :
+    Hom.WS magmaFO ["U", "U", "U"] (opT a b) [] "U" :=
+  .app (.app (.cnst (by simp [magmaFO])) ha) hb
+
+theorem var_ws {i : Nat} (hi : i < 3) : Hom.WS magmaFO ["U", "U", "U"] (.var i) [] "U" :=
+  .var (by match i, hi with | 0, _ => rfl | 1, _ => rfl | 2, _ => rfl)
+
+def semigroupAx : Hom.EqAxioms magmaFO where
+  ax? n := if n = "assoc" then some (["U", "U", "U"], assocL, assocR, "U") else none
+  not_sort n a h := by
+    by_cases hn : n = "assoc"
+    · subst hn; decide
+    · simp [hn] at h
+  not_op n a h := by
+    by_cases hn : n = "assoc"
+    · subst hn; simp [magmaFO]
+    · simp [hn] at h
+  sorts n as s t b h := by
+    by_cases hn : n = "assoc"
+    · simp [hn] at h; obtain ⟨rfl, -⟩ := h; simp [magmaFO]
+    · simp [hn] at h
+  lhs n as s t b h := by
+    by_cases hn : n = "assoc"
+    · simp [hn] at h; obtain ⟨rfl, rfl, -, rfl⟩ := h
+      exact op_ws (op_ws (var_ws (by decide)) (var_ws (by decide))) (var_ws (by decide))
+    · simp [hn] at h
+  rhs n as s t b h := by
+    by_cases hn : n = "assoc"
+    · simp [hn] at h; obtain ⟨rfl, -, rfl, rfl⟩ := h
+      exact op_ws (var_ws (by decide)) (op_ws (var_ws (by decide)) (var_ws (by decide)))
+    · simp [hn] at h
+
+/-- The copy of associativity in the second model is well-typed in `Hom(Semigroup)`. -/
+theorem hom_assoc_typed :
+    Hom.D (Hom.homSigA "HomSemigroup" magmaFO semigroupAx)
+      (.typing [] (Hom.eqAx "HomSemigroup" magmaFO "2" ["U", "U", "U"] assocL assocR "U") LF.type) :=
+  Hom.eqAx_typed (n := "assoc") (by decide) (.inr rfl) (by simp [semigroupAx])
 
 end MMT.Example
