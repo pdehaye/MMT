@@ -92,6 +92,93 @@ theorem Term.liftN_inst (k : Nat) (a t : Term) :
     simp only [inst, liftN]
     rw [ihb h, ihA h, iht (by omega : j + 1 ≤ c + 1), show c + 1 - (j + 1) = c - j by omega]
 
+/-! ## de Bruijn identities for substitution -/
+
+/-- Substituting into a variable that a lift skipped over. -/
+theorem Term.inst_liftN_skip {k c j : Nat} (v t : Term) (h1 : c ≤ j) (h2 : j ≤ c + k) :
+    inst j v (liftN (k + 1) c t) = liftN k c t := by
+  induction t generalizing c j with
+  | var i =>
+    by_cases hi : i < c
+    · have : i < j := by omega
+      simp [liftN, inst, hi, this]
+    · have h3 : ¬ (i + (k + 1) < j) := by omega
+      have h4 : ¬ (i + (k + 1) = j) := by omega
+      simp only [liftN, hi, ↓reduceIte, inst, h3, h4]
+      show Term.var (i + (k + 1) - 1) = Term.var (i + k)
+      congr 1
+  | const _ => rfl
+  | app f a ihf iha => simp [liftN, inst, ihf h1 h2, iha h1 h2]
+  | bind b A t ihb ihA iht =>
+    simp [liftN, inst, ihb h1 h2, ihA h1 h2, iht (by omega : c + 1 ≤ j + 1) (by omega)]
+
+/-- Substituting above a lift. -/
+theorem Term.inst_liftN_low (m : Nat) (u t : Term) :
+    ∀ {c j : Nat}, c ≤ j → inst (j + m) u (liftN m c t) = liftN m c (inst j u t) := by
+  induction t with
+  | var x =>
+    intro c j hcj
+    by_cases h1 : x < c
+    · have h2 : x < j + m := by omega
+      have h3 : x < j := by omega
+      simp [liftN, inst, h1, h2, h3]
+    · by_cases h2 : x < j
+      · have h3 : x + m < j + m := by omega
+        simp [liftN, inst, h1, h2, h3]
+      · by_cases h3 : x = j
+        · subst h3
+          simp only [liftN, h1, ↓reduceIte, inst, Nat.lt_irrefl]
+          rw [Term.liftN_liftN_merge m x u (Nat.zero_le c) (by omega), Nat.add_comm]
+        · have h4 : ¬ (x + m < j + m) := by omega
+          have h5 : ¬ (x + m = j + m) := by omega
+          have h6 : ¬ (x - 1 < c) := by omega
+          simp only [liftN, h1, ↓reduceIte, inst, h4, h5, h2, h3, h6]
+          congr 1; omega
+  | const => intro _ _ _; rfl
+  | app f a ihf iha => intro c j h; simp [liftN, inst, ihf h, iha h]
+  | bind b A t ihb ihA iht =>
+    intro c j h
+    simp only [liftN, inst]
+    rw [ihb h, ihA h, show j + m + 1 = (j + 1) + m by omega, iht (by omega : c + 1 ≤ j + 1)]
+
+/-- Substitutions commute. -/
+theorem Term.inst_inst (u a t : Term) :
+    ∀ {i j : Nat}, i ≤ j → inst j u (inst i a t) = inst i (inst (j - i) u a) (inst (j + 1) u t) := by
+  induction t with
+  | var x =>
+    intro i j hij
+    by_cases h1 : x < i
+    · have h2 : x < j := by omega
+      have h3 : x < j + 1 := by omega
+      simp [inst, h1, h2, h3]
+    · by_cases h2 : x = i
+      · subst h2
+        have h3 : x < j + 1 := by omega
+        simp only [inst, Nat.lt_irrefl, ↓reduceIte, h3]
+        have := Term.inst_liftN_low x u a (c := 0) (j := j - x) (Nat.zero_le _)
+        rwa [show j - x + x = j by omega] at this
+      · by_cases h3 : x < j + 1
+        · have h4 : x - 1 < j := by omega
+          simp [inst, h1, h2, h3, h4]
+        · by_cases h4 : x = j + 1
+          · subst h4
+            have h5 : ¬ (j + 1 - 1 < j) := by omega
+            simp only [inst, h1, h2, Nat.lt_irrefl, ↓reduceIte, h5]
+            simp only [show j + 1 - 1 = j by omega, ↓reduceIte]
+            exact (Term.inst_liftN_skip (k := j) (c := 0) (j := i) (inst (j - i) u a) u
+              (Nat.zero_le i) (by omega)).symm
+          · have h5 : ¬ (x - 1 < j) := by omega
+            have h6 : ¬ (x - 1 = j) := by omega
+            have h7 : ¬ (x - 1 < i) := by omega
+            have h8 : ¬ (x - 1 = i) := by omega
+            simp only [inst, h1, h2, h3, h4, h5, h6, h7, h8, ↓reduceIte]
+  | const => intro _ _ _; rfl
+  | app f x ihf ihx => intro i j h; simp [inst, ihf h, ihx h]
+  | bind b A t ihb ihA iht =>
+    intro i j h
+    simp only [inst]
+    rw [ihb h, ihA h, iht (by omega : i + 1 ≤ j + 1), show j + 1 - (i + 1) = j - i by omega]
+
 /-! ## Inserting a variable into a context -/
 
 /-- Insert `B` at position `c` (so that it becomes `var c`), lifting the entries in
@@ -313,6 +400,262 @@ theorem weaken {S : Sig}
     refine .rule hr' (fun p' hp' => ?_)
     obtain ⟨p, hp, c', hc', rfl⟩ := hps' p' hp'
     exact ih p hp c' B hc'
+
+end LF
+
+/-! ## Substitution -/
+
+theorem Term.liftN_zero' (c : Nat) (t : Term) : liftN 0 c t = t := by
+  induction t generalizing c with
+  | var i => by_cases h : i < c <;> simp [liftN, h]
+  | const _ => rfl
+  | app f a ihf iha => simp [liftN, ihf, iha]
+  | bind b A t ihb ihA iht => simp [liftN, ihb, ihA, iht]
+
+/-- Substitute `u` for the variable at position `d` of a context. -/
+def ctxSub : Nat → Term → Ctx → Ctx
+  | _, _, [] => []
+  | 0, _, _ :: Γ => Γ
+  | d + 1, u, A :: Γ => inst d u A :: ctxSub d u Γ
+
+theorem ctxSub_lt : ∀ {d : Nat} {u : Term} {Γ : Ctx} {i : Nat} {A : Term},
+    i < d → Γ[i]? = some A → (ctxSub d u Γ)[i]? = some (inst (d - 1 - i) u A)
+  | 0, _, _, _, _, h, _ => by omega
+  | _ + 1, _, [], _, _, _, h => by simp at h
+  | d + 1, u, A' :: Γ, 0, A, _, h => by simp at h; subst h; simp [ctxSub]
+  | d + 1, u, A' :: Γ, i + 1, A, hi, h => by
+    simp only [List.getElem?_cons_succ] at h
+    simp only [ctxSub, List.getElem?_cons_succ]
+    rw [ctxSub_lt (by omega) h]
+    congr 2; omega
+
+theorem ctxSub_gt : ∀ {d : Nat} {u : Term} {Γ : Ctx} {i : Nat},
+    d < i → (ctxSub d u Γ)[i - 1]? = Γ[i]?
+  | _, _, [], i, _ => by simp [ctxSub]
+  | 0, u, A :: Γ, i + 1, _ => by simp [ctxSub]
+  | d + 1, u, A :: Γ, i + 1, h => by
+    simp only [ctxSub, List.getElem?_cons_succ]
+    have := ctxSub_gt (d := d) (u := u) (Γ := Γ) (i := i) (by omega)
+    rw [show i + 1 - 1 = (i - 1) + 1 by omega, List.getElem?_cons_succ, this]
+  | _, _, _ :: _, 0, h => by omega
+
+theorem ctxSub_split : ∀ {d : Nat} {u : Term} {Γ : Ctx}, d < Γ.length →
+    ∃ Δ, ctxSub d u Γ = Δ ++ Γ.drop (d + 1) ∧ Δ.length = d
+  | _, _, [], h => by simp at h
+  | 0, u, A :: Γ, _ => ⟨[], by simp [ctxSub], rfl⟩
+  | d + 1, u, A :: Γ, h => by
+    obtain ⟨Δ, h1, h2⟩ := ctxSub_split (d := d) (u := u) (Γ := Γ) (by simpa using h)
+    exact ⟨inst d u A :: Δ, by simp [ctxSub, h1], by simp [h2]⟩
+
+namespace Judgment
+
+/-- Substitution of `u` for the variable at position `d`. -/
+def sub (d : Nat) (u : Term) : Judgment → Judgment
+  | typing Γ t A => typing (ctxSub d u Γ) (inst d u t) (inst d u A)
+  | equal Γ t t' A => equal (ctxSub d u Γ) (inst d u t) (inst d u t') (inst d u A)
+
+end Judgment
+
+namespace LF
+
+open Judgment
+
+/-- Substituted premises: each comes from an old premise, at the position of the same
+variable. -/
+def SubPrem (ps ps' : List Judgment) (j : Judgment) (d : Nat) (u : Term) : Prop :=
+  ∀ p' ∈ ps', ∃ p ∈ ps, ∃ d', p.ctx.drop (d' + 1) = j.ctx.drop (d + 1) ∧
+    p.ctx[d']? = j.ctx[d]? ∧ p' = p.sub d' u
+
+theorem subPrem_ext {Γ : Ctx} {A : Term} {d : Nat} :
+    (A :: Γ).drop (d + 1 + 1) = Γ.drop (d + 1) ∧ (A :: Γ)[d + 1]? = Γ[d]? := by simp
+
+/-- **Every LF rule is stable under substitution**, except the variable rule at the
+substituted variable, which yields the substituted term itself. -/
+theorem Rule.sub {ps : List Judgment} {j : Judgment} (h : Rule ps j) (d : Nat) (u : Term) :
+    (∃ ps', Rule ps' (j.sub d u) ∧ SubPrem ps ps' j d u) ∨
+    (∃ A, j.ctx[d]? = some A ∧ j.sub d u = typing (ctxSub d u j.ctx) (liftN d 0 u) (liftN d 0 A)) := by
+  cases h with
+  | univ Γ => exact .inl ⟨[], Rule.univ _, by simp [SubPrem]⟩
+  | var Γ i A hi =>
+    rcases Nat.lt_trichotomy i d with hlt | rfl | hgt
+    · refine .inl ⟨[], ?_, by simp [SubPrem]⟩
+      have hv := Rule.var (ctxSub d u Γ) i _ (ctxSub_lt hlt hi)
+      have e : liftN (i + 1) 0 (inst (d - 1 - i) u A) = inst d u (liftN (i + 1) 0 A) := by
+        have := Term.inst_liftN_low (i + 1) u A (c := 0) (j := d - 1 - i) (Nat.zero_le _)
+        rw [show d - 1 - i + (i + 1) = d by omega] at this
+        exact this.symm
+      rw [e] at hv
+      have e2 : inst d u (Term.var i) = Term.var i := by simp [inst, hlt]
+      show Rule [] (typing (ctxSub d u Γ) (inst d u (.var i)) (inst d u (liftN (i + 1) 0 A)))
+      rw [e2]; exact hv
+    · refine .inr ⟨A, hi, ?_⟩
+      show typing (ctxSub i u Γ) (inst i u (.var i)) (inst i u (liftN (i + 1) 0 A)) = _
+      rw [Term.inst_liftN_skip u A (Nat.zero_le i) (by omega)]
+      simp [inst, ctx]
+    · refine .inl ⟨[], ?_, by simp [SubPrem]⟩
+      have hv := Rule.var (ctxSub d u Γ) (i - 1) A (by rw [ctxSub_gt hgt]; exact hi)
+      rw [show i - 1 + 1 = i by omega] at hv
+      have e : inst d u (liftN (i + 1) 0 A) = liftN i 0 A :=
+        Term.inst_liftN_skip u A (Nat.zero_le d) (by omega)
+      have e2 : inst d u (Term.var i) = Term.var (i - 1) := by
+        have h1 : ¬ i < d := by omega
+        have h2 : ¬ i = d := by omega
+        simp [inst, h1, h2]
+      show Rule [] (typing (ctxSub d u Γ) (inst d u (.var i)) (inst d u (liftN (i + 1) 0 A)))
+      rw [e, e2]; exact hv
+  | piType Γ A B =>
+    refine .inl ⟨[(typing Γ A type).sub d u, (typing (A :: Γ) B type).sub (d + 1) u],
+      Rule.piType _ _ _, ?_⟩
+    simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+    rintro p' (rfl | rfl)
+    · exact ⟨typing Γ A type, by simp, d, rfl, rfl, rfl⟩
+    · exact ⟨typing (A :: Γ) B type, by simp, d + 1, subPrem_ext.1, subPrem_ext.2, rfl⟩
+  | piKind Γ A B =>
+    refine .inl ⟨[(typing Γ A type).sub d u, (typing (A :: Γ) B kind).sub (d + 1) u],
+      Rule.piKind _ _ _, ?_⟩
+    simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+    rintro p' (rfl | rfl)
+    · exact ⟨typing Γ A type, by simp, d, rfl, rfl, rfl⟩
+    · exact ⟨typing (A :: Γ) B kind, by simp, d + 1, subPrem_ext.1, subPrem_ext.2, rfl⟩
+  | lamI Γ A B t =>
+    refine .inl ⟨[(typing Γ A type).sub d u, (typing (A :: Γ) t B).sub (d + 1) u],
+      Rule.lamI _ _ _ _, ?_⟩
+    simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+    rintro p' (rfl | rfl)
+    · exact ⟨typing Γ A type, by simp, d, rfl, rfl, rfl⟩
+    · exact ⟨typing (A :: Γ) t B, by simp, d + 1, subPrem_ext.1, subPrem_ext.2, rfl⟩
+  | appE Γ A B f a =>
+    refine .inl ⟨[(typing Γ f (Pi A B)).sub d u, (typing Γ a A).sub d u], ?_, ?_⟩
+    · have := Rule.appE (ctxSub d u Γ) (inst d u A) (inst (d + 1) u B) (inst d u f) (inst d u a)
+      rw [← show inst d u (inst 0 a B) = inst 0 (inst d u a) (inst (d + 1) u B) by
+        simpa using Term.inst_inst u a B (Nat.zero_le d)] at this
+      exact this
+    · simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+      rintro p' (rfl | rfl)
+      · exact ⟨typing Γ f (Pi A B), by simp, d, rfl, rfl, rfl⟩
+      · exact ⟨typing Γ a A, by simp, d, rfl, rfl, rfl⟩
+  | conv Γ t A B U =>
+    refine .inl ⟨[(typing Γ t A).sub d u, (equal Γ A B U).sub d u], Rule.conv _ _ _ _ _, ?_⟩
+    simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+    rintro p' (rfl | rfl)
+    · exact ⟨typing Γ t A, by simp, d, rfl, rfl, rfl⟩
+    · exact ⟨equal Γ A B U, by simp, d, rfl, rfl, rfl⟩
+  | refl Γ t A =>
+    refine .inl ⟨[(typing Γ t A).sub d u], Rule.refl _ _ _, ?_⟩
+    simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+    rintro p' rfl; exact ⟨typing Γ t A, by simp, d, rfl, rfl, rfl⟩
+  | symm Γ t t' A =>
+    refine .inl ⟨[(equal Γ t t' A).sub d u], Rule.symm _ _ _ _, ?_⟩
+    simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+    rintro p' rfl; exact ⟨equal Γ t t' A, by simp, d, rfl, rfl, rfl⟩
+  | trans Γ t t' v A =>
+    refine .inl ⟨[(equal Γ t t' A).sub d u, (equal Γ t' v A).sub d u], Rule.trans _ _ _ _ _, ?_⟩
+    simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+    rintro p' (rfl | rfl)
+    · exact ⟨equal Γ t t' A, by simp, d, rfl, rfl, rfl⟩
+    · exact ⟨equal Γ t' v A, by simp, d, rfl, rfl, rfl⟩
+  | piCong Γ A A' B B' U =>
+    have e : inst (d + 1) u (liftN 1 0 U) = liftN 1 0 (inst d u U) := by
+      simpa using Term.inst_liftN_low 1 u U (c := 0) (j := d) (Nat.zero_le _)
+    refine .inl ⟨[(equal Γ A A' type).sub d u, (equal (A :: Γ) B B' (liftN 1 0 U)).sub (d + 1) u],
+      ?_, ?_⟩
+    · have := Rule.piCong (ctxSub d u Γ) (inst d u A) (inst d u A') (inst (d + 1) u B)
+        (inst (d + 1) u B') (inst d u U)
+      simpa [Judgment.sub, ctxSub, inst, e] using this
+    · simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+      rintro p' (rfl | rfl)
+      · exact ⟨equal Γ A A' type, by simp, d, rfl, rfl, rfl⟩
+      · exact ⟨equal (A :: Γ) B B' (liftN 1 0 U), by simp, d + 1, subPrem_ext.1, subPrem_ext.2, rfl⟩
+  | lamCong Γ A A' B t t' =>
+    refine .inl ⟨[(equal Γ A A' type).sub d u, (equal (A :: Γ) t t' B).sub (d + 1) u],
+      Rule.lamCong _ _ _ _ _ _, ?_⟩
+    simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+    rintro p' (rfl | rfl)
+    · exact ⟨equal Γ A A' type, by simp, d, rfl, rfl, rfl⟩
+    · exact ⟨equal (A :: Γ) t t' B, by simp, d + 1, subPrem_ext.1, subPrem_ext.2, rfl⟩
+  | appCong Γ A B f f' a a' =>
+    refine .inl ⟨[(equal Γ f f' (Pi A B)).sub d u, (equal Γ a a' A).sub d u], ?_, ?_⟩
+    · have := Rule.appCong (ctxSub d u Γ) (inst d u A) (inst (d + 1) u B) (inst d u f)
+        (inst d u f') (inst d u a) (inst d u a')
+      rw [← show inst d u (inst 0 a B) = inst 0 (inst d u a) (inst (d + 1) u B) by
+        simpa using Term.inst_inst u a B (Nat.zero_le d)] at this
+      exact this
+    · simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+      rintro p' (rfl | rfl)
+      · exact ⟨equal Γ f f' (Pi A B), by simp, d, rfl, rfl, rfl⟩
+      · exact ⟨equal Γ a a' A, by simp, d, rfl, rfl, rfl⟩
+  | beta Γ A B t a =>
+    refine .inl ⟨[(typing (A :: Γ) t B).sub (d + 1) u, (typing Γ a A).sub d u], ?_, ?_⟩
+    · have := Rule.beta (ctxSub d u Γ) (inst d u A) (inst (d + 1) u B) (inst (d + 1) u t)
+        (inst d u a)
+      rw [← show inst d u (inst 0 a B) = inst 0 (inst d u a) (inst (d + 1) u B) by
+          simpa using Term.inst_inst u a B (Nat.zero_le d),
+        ← show inst d u (inst 0 a t) = inst 0 (inst d u a) (inst (d + 1) u t) by
+          simpa using Term.inst_inst u a t (Nat.zero_le d)] at this
+      exact this
+    · simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+      rintro p' (rfl | rfl)
+      · exact ⟨typing (A :: Γ) t B, by simp, d + 1, subPrem_ext.1, subPrem_ext.2, rfl⟩
+      · exact ⟨typing Γ a A, by simp, d, rfl, rfl, rfl⟩
+  | eta Γ A B f =>
+    refine .inl ⟨[(typing Γ f (Pi A B)).sub d u], ?_, ?_⟩
+    · have := Rule.eta (ctxSub d u Γ) (inst d u A) (inst (d + 1) u B) (inst d u f)
+      have e : inst (d + 1) u (liftN 1 0 f) = liftN 1 0 (inst d u f) := by
+        simpa using Term.inst_liftN_low 1 u f (c := 0) (j := d) (Nat.zero_le _)
+      simpa [Judgment.sub, inst, e] using this
+    · simp only [SubPrem, List.mem_cons, List.not_mem_nil, or_false]
+      rintro p' rfl; exact ⟨typing Γ f (Pi A B), by simp, d, rfl, rfl, rfl⟩
+
+/-- Weakening by a whole prefix. -/
+theorem weaken_front {S : Sig}
+    (hS : ∀ c A d, S c = some ⟨some A, d⟩ → A.ClosedAt 0 ∧ ∀ e, d = some e → e.ClosedAt 0)
+    {Γ₀ : Ctx} {u A : Term} (hu : Derivable foundation S (typing Γ₀ u A)) :
+    ∀ Δ : Ctx, Derivable foundation S (typing (Δ ++ Γ₀) (liftN Δ.length 0 u) (liftN Δ.length 0 A))
+  | [] => by simpa [Term.liftN_zero'] using hu
+  | B :: Δ => by
+    have := weaken hS (weaken_front hS hu Δ) 0 B (Nat.zero_le _)
+    simp only [Judgment.wk, ctxIns] at this
+    rw [Term.liftN_liftN_merge 1 Δ.length u (Nat.le_refl 0) (by omega),
+      Term.liftN_liftN_merge 1 Δ.length A (Nat.le_refl 0) (by omega)] at this
+    simpa using this
+
+/-- **The substitution lemma for LF**: if `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then
+`Δ[u/x], Γ ⊢ J[u/x]`. The signature's declarations must be closed. -/
+theorem subst {S : Sig}
+    (hS : ∀ c A d, S c = some ⟨some A, d⟩ → A.ClosedAt 0 ∧ ∀ e, d = some e → e.ClosedAt 0)
+    {u : Term} {J : Judgment} (h : Derivable foundation S J) :
+    ∀ (d : Nat) (A : Term), J.ctx[d]? = some A →
+      Derivable foundation S (typing (J.ctx.drop (d + 1)) u A) →
+      Derivable foundation S (J.sub d u) := by
+  induction h with
+  | @const Γ c' A' e hc =>
+    intro d A _ _
+    have := (hS c' A' e hc).1
+    simpa [Judgment.sub, inst, inst_closed this] using
+      (Derivable.const (Γ := ctxSub d u Γ) hc)
+  | @defn Γ c' A' e hc =>
+    intro d A _ _
+    have h1 := (hS c' A' (some e) hc).1
+    have h2 := (hS c' A' (some e) hc).2 e rfl
+    simpa [Judgment.sub, inst, inst_closed h1, inst_closed h2] using
+      (Derivable.defn (Γ := ctxSub d u Γ) hc)
+  | @rule ps j hr _ ih =>
+    intro d A hd hu
+    rcases Rule.sub hr d u with ⟨ps', hr', hps'⟩ | ⟨A', hA', heq⟩
+    · refine .rule hr' (fun p' hp' => ?_)
+      obtain ⟨p, hp, d', hdrop, hget, rfl⟩ := hps' p' hp'
+      exact ih p hp d' A (by rw [hget]; exact hd) (by rw [hdrop]; exact hu)
+    · rw [hd] at hA'; cases hA'
+      rw [heq]
+      have hlen : d < j.ctx.length := by
+        rcases Nat.lt_or_ge d j.ctx.length with h' | h'
+        · exact h'
+        · rw [List.getElem?_eq_none h'] at hd; cases hd
+      obtain ⟨Δ, hΔ, hΔl⟩ := ctxSub_split (u := u) hlen
+      rw [hΔ]
+      have := weaken_front hS hu Δ
+      rw [hΔl] at this
+      exact this
 
 end LF
 

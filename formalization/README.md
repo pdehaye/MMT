@@ -19,6 +19,7 @@ classical logic.
 | `Translation.lean` | Homomorphic translation along morphisms, identity, composition, functoriality, commutation with shifting and substitution | `Library.ApplyMorphs`, `api/objects/Translator.scala` |
 | `Judgment.lean` | Flat signatures, judgments, abstract `Foundation`, derivability, well-typed morphisms, **judgment preservation**, category of theories | `api/checking/{Rules,Solver}.scala`, `api/objects/Judgements.scala` |
 | `LF.lean` | LF as a concrete foundation, with proofs that its rules are stable under translation and context extension | `mmt-lf` |
+| `LFMeta.lean` | Metatheory of LF: de Bruijn identities, inner weakening and the substitution lemma | `mmt-lf` |
 | `Modules.lean` | Theories with meta-theories, includes and structure declarations; libraries, visibility, flattening (including structure copies), views, view checking, structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
 | `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
 | `StructurePushout.lean` | Flattening a theory with a structure declaration is the pushout of `Pushout.lean`, and the structure morphism is the pushout morphism | `api/symbols/Structure.scala` |
@@ -42,6 +43,10 @@ classical logic.
   and inclusions are morphisms.
 * `LF.foundation`: LF meets the foundation interface, so the preservation theorem
   applies to all LF-based theories.
+* `LF.weaken`: inner weakening is admissible in LF. A variable can be inserted at any
+  position of the context.
+* `LF.subst`: the substitution lemma for LF. If `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then
+  `Δ[u/x], Γ ⊢ J[u/x]`. Both lemmas assume the signature's declarations are closed.
 * `Visible.isMorphism`: include and meta-theory paths are morphisms between flattenings.
 * `View.isMorphism_of_check`: it is enough to check a view's assignments locally.
 * `structMor_isMorphism`, `structMor_preserves`: a `structure s : S` declared in a
@@ -157,9 +162,12 @@ classical logic.
   views that send operations to compound first-order terms. There, `f^h` is sent to a
   proof built by induction on the term, which needs `refl`, `trans` and `cong` in the
   logic.
-* Our LF has no substitution lemma for derivations. `HomView.lean` works around this
-  by keeping every intermediate term the encoding of a first-order term under a
-  valuation by variable-like atoms, and proving its typing directly.
+* `HomView.lean` was written before the substitution lemma (`LFMeta.lean`) existed. It
+  keeps every intermediate term the encoding of a first-order term under a valuation
+  by variable-like atoms, and proves its typing directly.
+* In the LF rule for Π-congruence, the universe of the codomain premise is lifted
+  (`U.liftN 1 0`), as de Bruijn indexing requires. This makes the rule stable under
+  weakening and substitution.
 * For compound-term views the functor laws hold only up to equality of proofs: for
   example, `Hom(φ;ψ)(f^h)` and `(Hom φ;Hom ψ)(f^h)` are different proof terms of the
   same type. Proving them equal would need proof irrelevance in the logic.
@@ -170,8 +178,6 @@ classical logic.
   * the homomorphism functor on signatures beyond first-order ones (predicates,
     axioms, dependent types), and its functor laws up to proof irrelevance for
     compound-term views;
-  * a substitution lemma for LF derivations (typing is preserved under substitution
-    and inner weakening);
   * the meta-operators that select or rearrange theories (zipping, closure,
     difference, rebase);
   * the Solver's handling of unknowns: solving implicit arguments, delaying
