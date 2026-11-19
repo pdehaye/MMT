@@ -105,3 +105,12 @@ if this changes.
 
 /-- info: 'MMT.solveCheckD_sound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms MMT.solveCheckD_sound
+
+/-- info: 'MMT.Derivable.subst' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms MMT.Derivable.subst
+
+/-- info: 'MMT.STLC.subst' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms MMT.STLC.subst
+
+/-- info: 'MMT.STLC.beta_typed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms MMT.STLC.beta_typed

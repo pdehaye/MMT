@@ -1,11 +1,13 @@
 import MMTlib.Core.Term
 import MMTlib.Core.Translation
 import MMTlib.Core.Judgment
+import MMTlib.Core.Structural
 import MMTlib.Core.FoundationMorphism
 import MMTlib.Foundations.LF.Basic
 import MMTlib.Foundations.LF.Meta
 import MMTlib.Foundations.LF.Confluence
 import MMTlib.Foundations.STLC.Basic
+import MMTlib.Foundations.STLC.Meta
 import MMTlib.Foundations.STLC.ToLF
 import MMTlib.Modules.Basic
 import MMTlib.Modules.Pushout

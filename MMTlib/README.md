@@ -3,7 +3,8 @@
 MMTlib is a Lean 4 library formalizing MMT, without dependencies (no Mathlib). It covers:
 * the foundation-independent core (terms, morphisms, judgments);
 * two foundations, LF and the simply typed λ-calculus, and foundation morphisms;
-* the metatheory of LF, including confluence of β-reduction;
+* generic structural metatheory (weakening, substitution) for foundations, instantiated
+  for LF and STLC, and confluence of β-reduction;
 * the module system (theories, includes, structures, views, partial views) and pushouts;
 * diagram operators;
 * executable checkers that are proved sound: a type checker, a theory checker and a
@@ -56,12 +57,14 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlib.Core.Term` | Terms `var`/`const`/`app`/`bind`, de Bruijn shifting and substitution, closedness | `api/objects/Obj.scala` (`OMV`, `OMS`, `OMA`, `OMBIND`) |
 | `MMTlib.Core.Translation` | Homomorphic translation along morphisms, functoriality, commutation with shifting and substitution | `Library.ApplyMorphs`, `api/objects/Translator.scala` |
 | `MMTlib.Core.Judgment` | Flat signatures, judgments, abstract `Foundation`, derivability, well-typed morphisms, **judgment preservation**, category of theories | `api/checking/{Rules,Solver}.scala`, `api/objects/Judgements.scala` |
+| `MMTlib.Core.Structural` | Weakening and the substitution lemma for every foundation whose rules are stable; de Bruijn identities | foundation-independence |
 | **Foundations** | | |
 | `MMTlib.Foundations.LF.Basic` | LF as a foundation; its rules are stable under translation and context extension | `mmt-lf` |
-| `MMTlib.Foundations.LF.Meta` | Metatheory of LF: de Bruijn identities, scoping, inner weakening, substitution lemma | `mmt-lf` |
+| `MMTlib.Foundations.LF.Meta` | Metatheory of LF: stability of the rules under weakening and substitution, scoping | `mmt-lf` |
 | `MMTlib.Foundations.LF.Confluence` | β-reduction, parallel reduction, complete development; Church–Rosser, unique normal forms | `mmt-lf` (`Beta` rule) |
 | `MMTlib.Core.FoundationMorphism` | Foundation morphisms and the transport of derivations | meta-theory morphisms |
 | `MMTlib.Foundations.STLC.Basic` | A second foundation, the simply typed λ-calculus | foundation-independence |
+| `MMTlib.Foundations.STLC.Meta` | Weakening and substitution for STLC from the generic proofs; inversion; typing of β-reducts | foundation-independence |
 | `MMTlib.Foundations.STLC.ToLF` | The embedding of STLC into LF | meta-theory morphisms |
 | **Module system** | | |
 | `MMTlib.Modules.Basic` | Theories with meta-theories, includes and structures; visibility; flattening (including structure copies); views; structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
@@ -114,10 +117,14 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 * `LF.foundation`: LF meets the foundation interface.
 * `LF.scoping`: in a derivable judgment, all terms use only variables of the context.
   So checked declarations are closed (`DeclOK.closed`).
-* `LF.weaken`: inner weakening. A variable can be inserted at any position of the
-  context.
-* `LF.subst`: the substitution lemma. If `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then
-  `Δ[u/x], Γ ⊢ J[u/x]`. Both lemmas assume the signature's declarations are closed.
+* `Derivable.weaken`, `Derivable.subst`: for every foundation whose rules are stable
+  under inner weakening and substitution (`Foundation.Weakening`,
+  `Foundation.Substitution`), a variable can be inserted at any position of the context,
+  and if `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then `Δ[u/x], Γ ⊢ J[u/x]`. Both lemmas assume
+  the signature's declarations are closed (`Sig.ClosedDecls`).
+* `LF.weaken`, `LF.subst` and `STLC.weaken`, `STLC.subst`: the instances for LF and STLC.
+* `STLC.beta_typed`: in STLC, which has no conversion rule, contracting a well-typed
+  β-redex preserves its type (via inversion, `STLC.inv_app`, `STLC.inv_lam`).
 * `LF.Red.confluent` (**Church–Rosser**): β-reduction is confluent, by the
   Tait–Martin-Löf method with Takahashi's complete development (`LF.Par.triangle`,
   `LF.Par.diamond`). Consequences: `LF.Red.normal_unique` (normal forms are unique) and
