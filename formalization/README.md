@@ -25,6 +25,7 @@ classical logic.
 | `StructurePushout.lean` | Flattening a theory with a structure declaration is the pushout of `Pushout.lean`, and the structure morphism is the pushout morphism | `api/symbols/Structure.scala` |
 | `PartialView.lean` | Partial morphisms and partial translation, preservation on the domain of definition, totality, composition, partial views in the module system | `api/modules/View.scala` (partial views) |
 | `Diagrams.lean` | Diagrams; linear functors given by systematic renaming, with functor laws; connectors and naturality; sequencing, union, and connecting a diagram to its image | `api/modules/diagrams/{Diagram,LinearFunctor,LinearConnector,MetaOperators}.scala`, `SystematicRenamer` |
+| `DiagramOps.lean` | Meta-operators: union, difference, rebase, subsumption and closure of diagrams of module names; sequencing and zipping of operators on typed diagrams | `api/modules/diagrams/{Diagram,MetaOperators,ZippingOperator}.scala` |
 | `PushoutFunctor.lean` | The pushout functor along a meta-theory morphism `m : M → M'`: theories, morphisms, connectors, functor laws | `api/modules/diagrams/PushoutOperator.scala` (`PushoutFunctor`, `PushoutConnector`) |
 | `Homomorphism.lean` | The homomorphism functor on first-order signatures over a logic `SFOL`: the theory `Hom(Σ)` of homomorphisms between two models, its well-formedness, its action on signature morphisms, and the projections | diagram operators (homomorphism functor) |
 | `HomView.lean` | The homomorphism functor on views that send operations to compound terms: proof terms built by induction on the term, multi-step β-reduction, and conversion to the translated axiom | diagram operators (homomorphism functor) |
@@ -88,6 +89,17 @@ classical logic.
   * `Diagram.map_wf`, `union_wf`, `connect_wf`: the operators preserve
     well-formedness of diagrams;
   * `Diagram.map_commutes`: they preserve commuting squares.
+* Meta-operators:
+  * `NDiagram.mem_union_modules`, `mem_allModules_union`, `mem_difference`,
+    `allModules_rebase`: what union, difference and rebase contain;
+  * `NDiagram.union_subsumes_left`, `union_subsumes_right`: the union subsumes both
+    arguments;
+  * `NDiagram.closure_iff`: MMT's iterative closure computes exactly the least set of
+    theories reachable by includes and structures outside the meta-diagram;
+  * `NDiagram.closure_complete`, `InClosure.closed`: the closure together with its
+    meta-diagram is closed under dependencies;
+  * `Diagram.sequenced_wf`, `Diagram.zipped_wf`: sequencing and zipping operators
+    preserve well-formedness.
 * Pushout functor:
   * `PFData.mor_isMorphism`: the induced morphism `P(σ) : P(S) → P(T)` is well-typed;
   * `PFData.naturality`: the connectors `S → P(S)` are natural;
@@ -178,8 +190,6 @@ classical logic.
   * the homomorphism functor on signatures beyond first-order ones (predicates,
     axioms, dependent types), and its functor laws up to proof irrelevance for
     compound-term views;
-  * the meta-operators that select or rearrange theories (zipping, closure,
-    difference, rebase);
   * the Solver's handling of unknowns: solving implicit arguments, delaying
     constraints, and type reconstruction;
   * completeness of the checker.

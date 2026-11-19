@@ -143,7 +143,7 @@ def _root_.MMT.Renaming.comp (ρ₁ ρ₂ : Renaming) : Renaming where
     obtain ⟨e, he, hc⟩ := Option.bind_eq_some_iff.mp h
     rw [ρ₁.fwd_bwd c e hc, ρ₂.fwd_bwd e d he]
 
-/-- Sequencing of linear functors (`SequencedDiagramOperators`). -/
+/-- Composition of linear functors: applying `G₂` to the output of `G₁`. (MMT expresses this by nesting operator applications; `SequencedDiagramOperators` is the union of results, see `DiagramOps.lean`.) -/
 def comp (G₁ G₂ : LinFunctor F) : LinFunctor F where
   ren := G₁.ren.comp G₂.ren
   fixMeta c hc := by simp [Renaming.comp, G₁.fixMeta c hc, G₂.fixMeta c hc]
