@@ -168,8 +168,11 @@ classical logic.
   * `checkSolved_sound`: as in MMT's Solver, solved unknowns `?x : A := t` are
     definitions in the checking context, unfolded by δ-conversion. Checking with them,
     and checking each solution, gives the instantiated judgment without unknowns;
-  * `Example.idApp_solved`, `Example.idApp_checkSolved`: the implicit argument of
-    `id ?A c : N` is solved to `N`, both by unification and as a solved definition.
+  * `elaborate_sound`: type reconstruction. An untrusted pass generates the constraints,
+    unification solves them and the trusted checker verifies the instance;
+  * `Example.idApp_solved`, `idApp_checkSolved`, `idApp_reconstructed`: the implicit
+    argument of `id ?A c : N` is solved to `N` by unification, as a solved definition,
+    and by type reconstruction without user-given constraints.
 * Checker:
   * `LF.Checker.check_sound`, `eq_sound`: whatever the checker accepts is derivable;
   * `Example.check_conv`, `check_beta`, `reject_op_x`: runs of the checker, evaluated
@@ -238,6 +241,6 @@ classical logic.
   * the homomorphism functor on signatures beyond first-order ones (predicates,
     axioms, dependent types), and its functor laws up to proof irrelevance for
     compound-term views;
-  * the Solver's delayed constraints, higher-order pattern unification and type
-    reconstruction (unknowns, solutions and first-order unification are covered);
+  * the Solver's delayed constraints and higher-order pattern unification (unknowns,
+    solutions, first-order unification and type reconstruction are covered);
   * completeness of the checker.

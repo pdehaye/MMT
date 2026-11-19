@@ -433,4 +433,24 @@ theorem magmaN_checks : checkTheory (libN magmaN) 4 "MagmaN" = true := by decide
 
 theorem magmaBad_rejected : checkTheory (libN magmaBad) 4 "MagmaN" = false := by decide
 
+/-! ### Type reconstruction -/
+
+/-- The implicit argument of `id ?A c : N` is reconstructed without user-given
+constraints: `?A := N`. -/
+theorem idApp_reconstructed :
+    (elaborate polySig 16 [] idApp (.const gNat)).map (fun θ => θ gA) = some (.const gNat) := by
+  decide
+
+theorem idApp_elaborated :
+    Derivable LF.foundation polySig
+      (.typing [] (.app (.app (.const gId) (.const gNat)) (.const gC)) (.const gNat)) := by
+  cases h : elaborate polySig 16 [] idApp (.const gNat) with
+  | none => have := idApp_reconstructed; rw [h] at this; cases this
+  | some θ =>
+    have hA : θ gA = .const gNat := by
+      have := idApp_reconstructed; rw [h] at this; simpa using this
+    obtain ⟨hsol, hd⟩ := elaborate_sound h
+    simpa [idApp, Term.trans, hsol.fix gId (by decide), hsol.fix gC (by decide),
+      hsol.fix gNat (by decide), hA] using hd
+
 end MMT.Example
