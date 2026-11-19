@@ -3,24 +3,27 @@ import MMTFormal.Modules
 import MMTFormal.LFMeta
 
 /-!
-# A verified view checker
+# Verified theory and view checkers
 
-MMT checks a view `v : dom → cod` assignment by assignment (`MMTStructureChecker`): every
-constant of the domain must be mapped to a term of the translated type in the codomain.
-This file gives an executable version of that check over a `Library`, built from the
-sound LF checker, and proves it sound: if it accepts, the view is a well-typed morphism
+MMT checks theories declaration by declaration, and a view `v : dom → cod` assignment by
+assignment (`MMTStructureChecker`): every constant of the domain must be mapped to a term
+of the translated type in the codomain. This file gives executable versions of these
+checks over a `Library`, built from the sound LF checker, and proves them sound: an
+accepted theory is well-formed (`checkTheory_sound`, including structure declarations
+via `checkStruct_sound`), and an accepted view is a well-typed morphism
 (`checkView_sound`).
 
 Ingredients:
 * `visibleB`: visibility by bounded search, sound w.r.t. `Visible`;
-* `flatB`: computable flattening, sound w.r.t. `flat` (it covers constants with base
-  names, i.e. not structure copies);
-* `reach`: the theories visible from the domain, by bounded search, together with a
+* `reach`: the theories visible from a theory, by bounded search, together with a
   decidable certificate that the list is complete (it is closed under include and
-  meta-theory edges).
+  meta-theory edges); under the certificate, visibility is decidable (`visDec_iff`);
+* `flatB`: computable flattening, including structure copies, sound w.r.t. `flat`
+  (`flatB_sub`) and exact under certificates (`flatB_eq`).
 
-The checker handles domains whose visible theories declare no structures; it rejects
-other views (soundly).
+The view checker allows structures in the codomain and in the domain, as long as the
+domain's structures have domains without structures and the other theories visible
+from the domain declare none; it rejects other views (soundly).
 -/
 
 namespace MMT

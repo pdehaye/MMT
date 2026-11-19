@@ -14,8 +14,9 @@ The homomorphism functor of MMT's diagram operators sends a first-order signatur
                                                      (operation f : a₁ → … → aₙ → b)
 ```
 
-It works over LF, with a logic meta-theory `SFOL` declaring `prop`, `ded` and a
-sort-polymorphic equality `eq`. Signature morphisms, i.e. maps of sort and operation
+It works over LF, with a logic meta-theory `SFOL` declaring `prop`, `ded`, a
+sort-polymorphic equality `eq`, and the equality rules `refl`, `trans` and `cong` (used
+by `HomView.lean`). Signature morphisms, i.e. maps of sort and operation
 names that preserve profiles, are sent to the renaming `c^k ↦ φ(c)^k`.
 
 Unlike the renaming functors of `Diagrams.lean`, this functor creates three

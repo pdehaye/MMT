@@ -19,9 +19,9 @@ claims, so the checker is sound by construction. `check_sound` and `eq_sound` st
 this for the Boolean interface. The functions take a fuel argument, which bounds the
 depth of the search, and run in the kernel (see `Example.lean`).
 
-The model does not cover the parts of MMT's `Solver` that deal with unknowns:
-solving implicit arguments, delaying constraints, and type reconstruction. It also
-gives no completeness guarantee: `false` only means that no derivation was found.
+Unknowns (implicit arguments, their solutions and type reconstruction) are treated in
+`Unknowns.lean`. The checker is complete for syntax-directed typing
+(`CheckerComplete.lean`); beyond that, `false` only means that no derivation was found.
 -/
 
 namespace MMT.LF.Checker
