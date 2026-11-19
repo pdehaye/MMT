@@ -52,7 +52,7 @@ inductive Rule : List Judgment → Judgment → Prop where
   | symm  (Γ t u A) : Rule [equal Γ t u A] (equal Γ u t A)
   | trans (Γ t u v A) : Rule [equal Γ t u A, equal Γ u v A] (equal Γ t v A)
   -- equality: congruences
-  | piCong (Γ A A' B B' U) : Rule [equal Γ A A' type, equal (A :: Γ) B B' U]
+  | piCong (Γ A A' B B' U) : Rule [equal Γ A A' type, equal (A :: Γ) B B' (U.liftN 1 0)]
       (equal Γ (Pi A B) (Pi A' B') U)
   | lamCong (Γ A A' B t t') : Rule [equal Γ A A' type, equal (A :: Γ) t t' B]
       (equal Γ (lam A t) (lam A' t') (Pi A B))
@@ -101,7 +101,7 @@ theorem Rule.stable_trans (σ : Subst) (hσ : σ.Closed) (hfix : ∀ c, c.thy = 
     simpa [Judgment.trans] using
       Rule.trans (Γ.map (·.trans σ)) (t.trans σ) (u.trans σ) (v.trans σ) (A.trans σ)
   | piCong Γ A A' B B' U =>
-    simpa [Judgment.trans, Term.trans, ht, hp] using
+    simpa [Judgment.trans, Term.trans, ht, hp, Term.trans_liftN hσ] using
       Rule.piCong (Γ.map (·.trans σ)) (A.trans σ) (A'.trans σ) (B.trans σ) (B'.trans σ)
         (U.trans σ)
   | lamCong Γ A A' B t t' =>

@@ -181,7 +181,7 @@ def eq : Nat → (Γ : Ctx) → (t u A : Term) → Option (PLift (D S (.equal Γ
        | _ => none
      | .bind (.const p) A₁ B₁, .bind (.const p') A₂ B₂ =>
        if hp : p = piN ∧ p' = piN then
-         match eq n Γ A₁ A₂ type, eq n (A₁ :: Γ) B₁ B₂ A with
+         match eq n Γ A₁ A₂ type, eq n (A₁ :: Γ) B₁ B₂ (A.liftN 1 0) with
          | some hA, some hB => some ⟨by
              obtain ⟨rfl, rfl⟩ := hp; exact r2 (Rule.piCong Γ A₁ A₂ B₁ B₂ A) hA.down hB.down⟩
          | _, _ => none

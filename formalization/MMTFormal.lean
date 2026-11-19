@@ -12,3 +12,4 @@ import MMTFormal.Checker
 import MMTFormal.PushoutFunctor
 import MMTFormal.Homomorphism
 import MMTFormal.HomView
+import MMTFormal.LFMeta
