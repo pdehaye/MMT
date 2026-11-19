@@ -453,4 +453,26 @@ theorem idApp_elaborated :
     simpa [idApp, Term.trans, hsol.fix gId (by decide), hsol.fix gC (by decide),
       hsol.fix gNat (by decide), hA] using hd
 
+/-! ### A view out of a theory with structures -/
+
+/-- `Bimagma → NatArith`: both copies of `Magma` go to addition. -/
+def bimagmaView : View :=
+  { dom := "Bimagma", cod := "NatArith",
+    assign := [(.sub "add" "Magma" "U", N), (.sub "add" "Magma" "op", .const gPlus),
+               (.sub "mul" "Magma" "U", N), (.sub "mul" "Magma" "op", .const gPlus)] }
+
+theorem bimagmaView_checks : checkView lib 4 bimagmaView = true := by decide
+
+theorem bimagmaView_wellTyped : bimagmaView.WellTyped LF.foundation lib :=
+  checkView_sound bimagmaView_checks
+
+/-- Forgetting to assign `mul/op` is caught: the copy would be mapped to itself, which is
+not a constant of `NatArith`. -/
+def bimagmaViewPartial : View :=
+  { dom := "Bimagma", cod := "NatArith",
+    assign := [(.sub "add" "Magma" "U", N), (.sub "add" "Magma" "op", .const gPlus),
+               (.sub "mul" "Magma" "U", N)] }
+
+theorem bimagmaViewPartial_rejected : checkView lib 4 bimagmaViewPartial = false := by decide
+
 end MMT.Example

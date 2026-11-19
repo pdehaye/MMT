@@ -167,7 +167,10 @@ classical logic.
     checked by `decide`, replacing the hand proof;
   * `Example.badView_rejected`: a view with an ill-typed assignment is rejected;
   * `Example.addView_checks`, `bimagmaExt_checks`: a view into a theory with structures
-    (`U ↦ add/U`, `op ↦ add/op`) and a theory using structure copies are checked.
+    (`U ↦ add/U`, `op ↦ add/op`) and a theory using structure copies are checked;
+  * `Example.bimagmaView_checks`, `bimagmaViewPartial_rejected`: a view *out of* a theory
+    with structures, assigning the copies `add/U, add/op, mul/U, mul/op`, is checked. A
+    view that forgets `mul/op` is rejected.
 * Unknowns:
   * `solution_isMorphism`, `solution_transport`: a solution whose terms have the
     declared types of their unknowns is a well-typed morphism from the signature
@@ -239,8 +242,9 @@ classical logic.
 * For compound-term views the functor laws hold only up to equality of proofs: for
   example, `Hom(φ;ψ)(f^h)` and `(Hom φ;Hom ψ)(f^h)` are different proof terms of the
   same type. Proving them equal would need proof irrelevance in the logic.
-* The view checker allows structures in the codomain, but the theories visible from the
-  domain must declare none. It checks that the theories visible from the domain are
+* The view checker allows structures in the codomain and in the domain itself. The
+  domain's structures must have domains without structures, and the other theories
+  visible from the domain must declare none. It checks that the theories visible from the domain are
   visible from the codomain, and that their declarations do not mention the domain.
   Other views are rejected. The structure check requires the theories shared between
   the structure's domain and the host to declare no structures, and assignments to

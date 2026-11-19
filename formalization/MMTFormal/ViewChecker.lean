@@ -267,15 +267,41 @@ def checkShared (L : Library) (k : Nat) (v : View) (R : ThyName) : Bool :=
         | _ => true
     | none => true)
 
+/-- Check the copy `dom?s/S0?m` induced by a structure of the domain. -/
+def checkCopy (L : Library) (k : Nat) (v : View) (s : String) (S0 : ThyName) (m : String) :
+    Bool :=
+  match homeInfoB L k v.dom (.sub s S0 (.base m)) with
+  | some ⟨some A, d⟩ =>
+    LF.Checker.typeCheck (flatB L k v.cod) [] (v.toSubst ⟨v.dom, .sub s S0 (.base m)⟩)
+      (A.trans v.toSubst) &&
+    optAll (fun e => LF.Checker.eqCheck (flatB L k v.cod) [] (v.toSubst ⟨v.dom, .sub s S0 (.base m)⟩)
+      (e.trans v.toSubst) (A.trans v.toSubst)) d
+  | _ => true
+
+/-- Check all copies induced by the structures of the domain. The structures' domains
+must declare no structures themselves. -/
+def checkCopies (L : Library) (k : Nat) (v : View) (th : Theory) : Bool :=
+  th.decls.all fun
+    | .struct s Sdom _ =>
+      closedUnderEdges L (reach L k Sdom) &&
+      (reach L k Sdom).all fun S0 =>
+        match L S0 with
+        | some th0 => noStructs th0 && th0.decls.all fun
+            | .const m _ _ => checkCopy L k v s S0 m
+            | _ => true
+        | none => true
+    | _ => true
+
 /-- **The view checker.** `k` bounds the searches. -/
 def checkView (L : Library) (k : Nat) (v : View) : Bool :=
   let Ls := reach L k v.dom
   closedUnderEdges L Ls &&
-  Ls.all (fun R => match L R with | some th => noStructs th | none => true) &&
+  Ls.all (fun R => R == v.dom || match L R with | some th => noStructs th | none => true) &&
   v.dom != LF.thy &&
   v.assign.all (fun p => closedB 0 p.2) &&
   (match L v.dom with
-   | some th => th.decls.all fun | .const n _ _ => checkConst L k v th n | _ => true
+   | some th => th.decls.all (fun | .const n _ _ => checkConst L k v th n | _ => true) &&
+       checkCopies L k v th
    | none => true) &&
   Ls.all (checkShared L k v)
 
@@ -321,6 +347,31 @@ theorem trans_avoids {v : View} {t : Term} (h : avoids v.dom t = true) :
   rw [Term.trans_congr (avoids_sound h) (τ := Subst.id) (fun c hc => View.toSubst_other hc),
     Term.trans_id]
 
+theorem structLookup_mem {th : Theory} {s : String} {Sdom : ThyName} {as : List (GName × Term)}
+    (h : th.structLookup s = some (Sdom, as)) : Decl.struct s Sdom as ∈ th.decls := by
+  unfold Theory.structLookup at h
+  obtain ⟨d, hd, hds⟩ := List.exists_of_findSome?_eq_some h
+  cases d with
+  | struct s' S as' =>
+    simp only at hds
+    split at hds
+    · subst_vars; cases hds; exact hd
+    · cases hds
+  | const => cases hds
+  | incl => cases hds
+
+/-- With certificates for the host and the structure's domain, the computable `homeInfo`
+of a copy is exact. -/
+theorem homeInfoB_sub_eq {L : Library} {k : Nat} {H Sdom S0 : ThyName} {s m : String}
+    {as : List (GName × Term)} (hsl : (L H).bind (·.structLookup s) = some (Sdom, as))
+    (hcH : closedUnderEdges L (reach L k H) = true)
+    (hcS : closedUnderEdges L (reach L k Sdom) = true) :
+    homeInfoB L k H (.sub s S0 (.base m)) = homeInfo L H (.sub s S0 (.base m)) := by
+  simp only [homeInfoB, hcH, ↓reduceIte, homeInfo, hsl, structMorB_eq hcH]
+  have e1 := @visDec_iff L k Sdom S0 hcS
+  have e2 := @visDec_iff L k H S0 hcH
+  by_cases h1 : Visible L Sdom S0 <;> by_cases h2 : Visible L H S0 <;> simp_all
+
 /-- **Soundness of the view checker.** -/
 theorem checkView_sound {L : Library} {k : Nat} {v : View} (h : checkView L k v = true) :
     v.WellTyped LF.foundation L := by
@@ -328,10 +379,11 @@ theorem checkView_sound {L : Library} {k : Nat} {v : View} (h : checkView L k v 
   obtain ⟨⟨⟨⟨⟨hcl, hns⟩, hlf⟩, hasg⟩, hloc⟩, hsh⟩ := h
   have hcl' := closedUnderEdges_sound hcl
   have hdom : v.dom ∈ reach L k v.dom := self_mem_reach L k v.dom
-  -- the domain's theories have no structures
-  have noS : ∀ R, Visible L v.dom R → ∀ th, L R = some th → noStructs th = true := by
-    intro R hv th hth
+  -- the other theories visible from the domain have no structures
+  have noS : ∀ R, R ≠ v.dom → Visible L v.dom R → ∀ th, L R = some th → noStructs th = true := by
+    intro R hne hv th hth
     have := hns R (visible_mem_of_closed hcl' hdom hv)
+    simp only [Bool.or_eq_true, beq_iff_eq, hne, false_or] at this
     rw [hth] at this; exact this
   apply View.isMorphism_of_check
   · intro p hp; exact closedB_sound (hasg p hp)
@@ -343,17 +395,57 @@ theorem checkView_sound {L : Library} {k : Nat} {v : View} (h : checkView L k v 
     cases hth : L v.dom with
     | none => rw [homeInfo_none hth] at hhi; cases hhi
     | some th =>
-      obtain ⟨m, hm, hll⟩ := homeInfo_base_of_noStructs hth (noS _ (.refl _) th hth) hhi
-      subst hm
       rw [hth] at hloc
-      simp only [List.all_eq_true] at hloc
-      have := hloc _ (localLookup_mem hll)
-      simp only [checkConst, hll, Bool.and_eq_true] at this
-      obtain ⟨hty, hdf⟩ := this
-      refine ⟨(LF.Checker.check_sound hty).mono (flatB_sub L k v.cod), ?_⟩
-      intro e he
-      subst he
-      exact (LF.Checker.eq_sound hdf).mono (flatB_sub L k v.cod)
+      simp only [Bool.and_eq_true, List.all_eq_true] at hloc
+      obtain ⟨hconsts, hcopies⟩ := hloc
+      cases n with
+      | base m =>
+        have hll : th.localLookup m = some ⟨some A, d⟩ := by simpa [homeInfo, hth] using hhi
+        have := hconsts _ (localLookup_mem hll)
+        simp only [checkConst, hll, Bool.and_eq_true] at this
+        obtain ⟨hty, hdf⟩ := this
+        refine ⟨(LF.Checker.check_sound hty).mono (flatB_sub L k v.cod), ?_⟩
+        intro e he
+        subst he
+        exact (LF.Checker.eq_sound hdf).mono (flatB_sub L k v.cod)
+      | sub s S0 o =>
+        -- the copy comes from the structure `s` of the domain
+        have hhi' := hhi
+        simp only [homeInfo, hth, Option.bind_some] at hhi'
+        cases hsl : th.structLookup s with
+        | none => rw [hsl] at hhi'; cases hhi'
+        | some p =>
+          obtain ⟨Sdom, as⟩ := p
+          rw [hsl] at hhi'
+          simp only at hhi'
+          split at hhi'
+          · rename_i hvis
+            obtain ⟨j, hj, -⟩ := Option.map_eq_some_iff.mp hhi'
+            simp only [checkCopies, List.all_eq_true] at hcopies
+            have hst := hcopies _ (structLookup_mem hsl)
+            simp only [Bool.and_eq_true, List.all_eq_true] at hst
+            obtain ⟨hcS, hS0⟩ := hst
+            have hmem := visible_mem_of_closed (closedUnderEdges_sound hcS) (self_mem_reach L k Sdom)
+              hvis.1
+            have := hS0 S0 hmem
+            cases hth0 : L S0 with
+            | none => rw [homeInfo_none hth0] at hj; cases hj
+            | some th0 =>
+              rw [hth0] at this
+              simp only [Bool.and_eq_true, List.all_eq_true] at this
+              obtain ⟨hns0, hconsts0⟩ := this
+              obtain ⟨m, rfl, hll⟩ := homeInfo_base_of_noStructs hth0 hns0 hj
+              have hc := hconsts0 _ (localLookup_mem hll)
+              simp only at hc
+              unfold checkCopy at hc
+              rw [homeInfoB_sub_eq (as := as) (by simp [hth, hsl]) hcl hcS, hhi] at hc
+              simp only [Bool.and_eq_true] at hc
+              obtain ⟨hty, hdf⟩ := hc
+              refine ⟨(LF.Checker.check_sound hty).mono (flatB_sub L k v.cod), ?_⟩
+              intro e he
+              subst he
+              exact (LF.Checker.eq_sound hdf).mono (flatB_sub L k v.cod)
+          · cases hhi'
   · intro c i hne hfl
     obtain ⟨hv, hhi⟩ := flat_eq_some.mp hfl
     have hmem := visible_mem_of_closed hcl' hdom hv
@@ -365,7 +457,7 @@ theorem checkView_sound {L : Library} {k : Nat} {v : View} (h : checkView L k v 
     cases hth : L c.thy with
     | none => rw [homeInfo_none hth] at hhi; cases hhi
     | some th =>
-      obtain ⟨m, -, hll⟩ := homeInfo_base_of_noStructs hth (noS _ hv th hth) hhi
+      obtain ⟨m, -, hll⟩ := homeInfo_base_of_noStructs hth (noS _ hne hv th hth) hhi
       rw [hth] at hdecls
       simp only [List.all_eq_true] at hdecls
       have := hdecls _ (localLookup_mem hll)
