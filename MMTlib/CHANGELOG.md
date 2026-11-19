@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Higher-order pattern unification (`MMTlib.Checking.PatternUnification`): solutions
+  `?X := λy⃗. t[y⃗/x⃗]`, sound up to β-reduction; constraints solved up to β, then the
+  instance is checked.
 * Confluence of β-reduction (`MMTlib.Foundations.LF.Confluence`): parallel
   reduction, complete development, the Church–Rosser theorem, uniqueness of normal
   forms, and conversion as joinability; morphisms preserve reduction.

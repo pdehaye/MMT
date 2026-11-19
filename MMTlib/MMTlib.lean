@@ -22,6 +22,7 @@ import MMTlib.Checking.TypeChecker
 import MMTlib.Checking.BetaConversion
 import MMTlib.Checking.Completeness
 import MMTlib.Checking.Unknowns
+import MMTlib.Checking.PatternUnification
 import MMTlib.Checking.ModuleChecker
 
 /-!
