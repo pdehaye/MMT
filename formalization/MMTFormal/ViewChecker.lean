@@ -1,5 +1,6 @@
 import MMTFormal.Unknowns
 import MMTFormal.Modules
+import MMTFormal.LFMeta
 
 /-!
 # A verified view checker
@@ -268,5 +269,84 @@ theorem checkView_sound {L : Library} {k : Nat} {v : View} (h : checkView L k v 
       refine ⟨fun A hA => ?_, fun e he => ?_⟩
       · rw [hA] at htp; exact trans_avoids htp
       · rw [he] at hdf; exact trans_avoids hdf
+
+/-! ## Checking theories -/
+
+/-- The library in which theory `T` only has the declarations `ds` (a prefix of its body). -/
+def setDecls (L : Library) (T : ThyName) (ds : List Decl) : Library := fun R =>
+  if R = T then (L T).map fun th => { th with decls := ds } else L R
+
+/-- A declaration is well-formed over `S`: the type of a constant is a type or a kind, and
+its definiens has that type. -/
+def DeclOK (S : Sig) : Decl → Prop
+  | .const _ (some A) df =>
+    (Derivable LF.foundation S (.typing [] A LF.type) ∨
+      Derivable LF.foundation S (.typing [] A LF.kind)) ∧
+    ∀ e, df = some e → Derivable LF.foundation S (.typing [] e A)
+  | _ => True
+
+/-- A theory is well-formed if each declaration is well-formed over the theory up to it. -/
+def TheoryWF (L : Library) (T : ThyName) : Prop :=
+  ∀ th, L T = some th → ∀ k d, th.decls[k]? = some d →
+    DeclOK (flat (setDecls L T (th.decls.take k)) T) d
+
+/-- Check one declaration over a signature. -/
+def checkDecl (S : Sig) : Decl → Bool
+  | .const _ (some A) df =>
+    (LF.Checker.typeCheck S [] A LF.type || LF.Checker.typeCheck S [] A LF.kind) &&
+    optAll (fun e => LF.Checker.typeCheck S [] e A) df
+  | _ => true
+
+/-- **The theory checker**, as MMT checks a theory declaration by declaration. -/
+def checkTheory (L : Library) (k : Nat) (T : ThyName) : Bool :=
+  match L T with
+  | some th => (List.range th.decls.length).all fun i =>
+      match th.decls[i]? with
+      | some d => checkDecl (flatB (setDecls L T (th.decls.take i)) k T) d
+      | none => true
+  | none => true
+
+theorem checkDecl_sound {S S' : Sig} (hSS : S.Sub S') {d : Decl} (h : checkDecl S d = true) :
+    DeclOK S' d := by
+  cases d with
+  | const n tp df =>
+    cases tp with
+    | none => trivial
+    | some A =>
+      simp only [checkDecl, Bool.and_eq_true, Bool.or_eq_true] at h
+      obtain ⟨hA, hdf⟩ := h
+      refine ⟨?_, fun e he => ?_⟩
+      · rcases hA with hA | hA
+        · exact .inl ((LF.Checker.check_sound hA).mono hSS)
+        · exact .inr ((LF.Checker.check_sound hA).mono hSS)
+      · subst he
+        exact (LF.Checker.check_sound hdf).mono hSS
+  | incl => trivial
+  | struct => trivial
+
+/-- **Soundness of the theory checker.** -/
+theorem checkTheory_sound {L : Library} {k : Nat} {T : ThyName} (h : checkTheory L k T = true) :
+    TheoryWF L T := by
+  intro th hth i d hd
+  unfold checkTheory at h
+  rw [hth] at h
+  simp only [List.all_eq_true, List.mem_range] at h
+  have hi : i < th.decls.length := by
+    rcases Nat.lt_or_ge i th.decls.length with h' | h'
+    · exact h'
+    · rw [List.getElem?_eq_none h'] at hd; cases hd
+  have := h i hi
+  rw [hd] at this
+  exact checkDecl_sound (flatB_sub _ k T) this
+
+/-- Well-typed declarations are closed: a consequence of scoping. -/
+theorem DeclOK.closed {S : Sig}
+    (hS : ∀ c A d, S c = some ⟨some A, d⟩ → A.ClosedAt 0 ∧ ∀ e, d = some e → e.ClosedAt 0)
+    {n : String} {A : Term} {df : Option Term} (h : DeclOK S (.const n (some A) df)) :
+    A.ClosedAt 0 ∧ ∀ e, df = some e → e.ClosedAt 0 := by
+  refine ⟨?_, fun e he => (LF.scoping hS (h.2 e he) trivial).1⟩
+  rcases h.1 with h | h
+  · exact (LF.scoping hS h trivial).1
+  · exact (LF.scoping hS h trivial).1
 
 end MMT

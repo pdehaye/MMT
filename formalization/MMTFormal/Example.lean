@@ -365,4 +365,26 @@ def badView : View :=
 /-- A wrong view is rejected: `op ↦ zero` does not have type `N → N → N`. -/
 theorem badView_rejected : checkView lib 4 badView = false := by decide
 
+/-! ### Checking theories -/
+
+/-- `Magma` and `NatArith` are well-formed, checked declaration by declaration. -/
+theorem magma_checks : checkTheory lib 4 "Magma" = true := by decide
+theorem natArith_checks : checkTheory lib 4 "NatArith" = true := by decide
+
+theorem magma_wf : TheoryWF lib "Magma" := checkTheory_sound magma_checks
+
+/-- A theory that uses `op` before declaring it is rejected. -/
+def badThy : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "U" (some type) none,
+              .const "e" (some (.app (.const ⟨"Bad", "op"⟩) (.const ⟨"Bad", "U"⟩))) none,
+              .const "op" (some (arrow (.const ⟨"Bad", "U"⟩) (.const ⟨"Bad", "U"⟩))) none] }
+
+def badLib : Library := fun
+  | "LF" => some lfThy
+  | "Bad" => some badThy
+  | _ => none
+
+theorem bad_rejected : checkTheory badLib 4 "Bad" = false := by decide
+
 end MMT.Example

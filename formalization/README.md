@@ -19,7 +19,7 @@ classical logic.
 | `Translation.lean` | Homomorphic translation along morphisms, identity, composition, functoriality, commutation with shifting and substitution | `Library.ApplyMorphs`, `api/objects/Translator.scala` |
 | `Judgment.lean` | Flat signatures, judgments, abstract `Foundation`, derivability, well-typed morphisms, **judgment preservation**, category of theories | `api/checking/{Rules,Solver}.scala`, `api/objects/Judgements.scala` |
 | `LF.lean` | LF as a concrete foundation, with proofs that its rules are stable under translation and context extension | `mmt-lf` |
-| `LFMeta.lean` | Metatheory of LF: de Bruijn identities, inner weakening and the substitution lemma | `mmt-lf` |
+| `LFMeta.lean` | Metatheory of LF: de Bruijn identities, scoping, inner weakening and the substitution lemma | `mmt-lf` |
 | `Modules.lean` | Theories with meta-theories, includes and structure declarations; libraries, visibility, flattening (including structure copies), views, view checking, structure morphisms | `api/modules/{Theory,View}.scala`, `api/symbols/{Constant,Structure}.scala` |
 | `Pushout.lean` | Pushout of a theory extension `S ⊆ S'` along a morphism `σ : S → T`, with fresh renaming and assignments; its universal property; structures as pushouts along the meta-theory | `api/symbols/Structure.scala`, `api/modules/diagrams/PushoutOperator.scala` |
 | `StructurePushout.lean` | Flattening a theory with a structure declaration is the pushout of `Pushout.lean`, and the structure morphism is the pushout morphism | `api/symbols/Structure.scala` |
@@ -29,7 +29,7 @@ classical logic.
 | `PushoutFunctor.lean` | The pushout functor along a meta-theory morphism `m : M → M'`: theories, morphisms, connectors, functor laws | `api/modules/diagrams/PushoutOperator.scala` (`PushoutFunctor`, `PushoutConnector`) |
 | `Homomorphism.lean` | The homomorphism functor on first-order signatures over a logic `SFOL`: the theory `Hom(Σ)` of homomorphisms between two models, its well-formedness, its action on signature morphisms, and the projections | diagram operators (homomorphism functor) |
 | `HomView.lean` | The homomorphism functor on views that send operations to compound terms: proof terms built by induction on the term, multi-step β-reduction, and conversion to the translated axiom | diagram operators (homomorphism functor) |
-| `ViewChecker.lean` | An executable view checker over a library: computable visibility and flattening (sound), a decidable completeness certificate for the visible theories, and soundness of the check | `api/checking/MMTStructureChecker.scala` (view checking) |
+| `ViewChecker.lean` | Executable checkers for theories (declaration by declaration) and views over a library: computable visibility and flattening (sound), a decidable completeness certificate for the visible theories, and soundness of both checks | `api/checking/MMTStructureChecker.scala` (view checking) |
 | `Unknowns.lean` | Unknowns as in MMT's Solver: solutions as morphisms, transport of derivations, first-order unification, and solving followed by checking | `api/checking/Solver.scala` (unknowns, solutions) |
 | `Checker.lean` | An executable type checker for LF (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer, hence is sound by construction | `api/checking/{Solver,Rules}.scala`, `mmt-lf` rules |
 | `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, `Bimagma` with two structures `add, mul : Magma`, and runs of the checker. Each is checked and used to transport a typing derivation | — |
@@ -46,6 +46,8 @@ classical logic.
   and inclusions are morphisms.
 * `LF.foundation`: LF meets the foundation interface, so the preservation theorem
   applies to all LF-based theories.
+* `LF.scoping`: in a derivable judgment, all terms use only variables of the context.
+  So checked declarations are closed (`DeclOK.closed`).
 * `LF.weaken`: inner weakening is admissible in LF. A variable can be inserted at any
   position of the context.
 * `LF.subst`: the substitution lemma for LF. If `Δ, x:A, Γ ⊢ J` and `Γ ⊢ u : A`, then
@@ -130,6 +132,12 @@ classical logic.
     `f^h` to `λx⃗. P(t)`;
   * `Example.hom_plusZeroView`: the view `Magma → Nat`,
     `op ↦ λx y. plus x (plus y zero)`.
+* Theory checker:
+  * `checkTheory_sound`: if the executable theory checker accepts a theory, every
+    declaration is well-formed over the theory up to that declaration (`TheoryWF`);
+  * `Example.magma_checks`, `natArith_checks`, `bad_rejected`: `Magma` and `NatArith`
+    are checked by `decide`; a theory that uses a constant before declaring it is
+    rejected.
 * View checker:
   * `checkView_sound`: if the executable view checker accepts a view, the view is a
     well-typed morphism between the flattenings;

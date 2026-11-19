@@ -657,6 +657,169 @@ theorem subst {S : Sig}
       rw [hΔl] at this
       exact this
 
+
+/-! ## Scoping -/
+
+/-- Every context entry only refers to the entries after it. -/
+def CtxScoped : Ctx → Prop
+  | [] => True
+  | A :: Γ => A.ClosedAt Γ.length ∧ CtxScoped Γ
+
+/-- All terms of a judgment only use variables of its context. -/
+def _root_.MMT.Judgment.Scoped : Judgment → Prop
+  | .typing Γ t A => t.ClosedAt Γ.length ∧ A.ClosedAt Γ.length
+  | .equal Γ t u A => t.ClosedAt Γ.length ∧ u.ClosedAt Γ.length ∧ A.ClosedAt Γ.length
+
+theorem Term.liftN_closedAt_shift {k : Nat} : ∀ {t : Term} {n c : Nat}, t.ClosedAt n → c ≤ n →
+    (liftN k c t).ClosedAt (n + k)
+  | .var i, n, c, h, hc => by
+    simp only [ClosedAt] at h
+    by_cases hi : i < c
+    · simp only [liftN, hi, ↓reduceIte, ClosedAt]; omega
+    · simp only [liftN, hi, ↓reduceIte, ClosedAt]; omega
+  | .const _, _, _, _, _ => trivial
+  | .app f a, n, c, h, hc => ⟨liftN_closedAt_shift h.1 hc, liftN_closedAt_shift h.2 hc⟩
+  | .bind b A t, n, c, h, hc => by
+    refine ⟨liftN_closedAt_shift h.1 hc, liftN_closedAt_shift h.2.1 hc, ?_⟩
+    have := liftN_closedAt_shift (k := k) h.2.2 (by omega : c + 1 ≤ n + 1)
+    simpa [Nat.add_right_comm] using this
+
+theorem Term.inst_closedAt' {a : Term} : ∀ {B : Term} {j n : Nat}, B.ClosedAt (n + 1) → j ≤ n →
+    a.ClosedAt (n - j) → (inst j a B).ClosedAt n
+  | .var x, j, n, hB, hj, ha => by
+    simp only [ClosedAt] at hB
+    by_cases h1 : x < j
+    · simp only [inst, h1, ↓reduceIte, ClosedAt]; omega
+    · by_cases h2 : x = j
+      · subst h2
+        simp only [inst, Nat.lt_irrefl, ↓reduceIte]
+        have := liftN_closedAt_shift (k := x) ha (Nat.zero_le _)
+        rwa [show n - x + x = n by omega] at this
+      · simp only [inst, h1, h2, ↓reduceIte, ClosedAt]; omega
+  | .const _, _, _, _, _, _ => trivial
+  | .app f x, j, n, hB, hj, ha => ⟨inst_closedAt' hB.1 hj ha, inst_closedAt' hB.2 hj ha⟩
+  | .bind b A t, j, n, hB, hj, ha => by
+    refine ⟨inst_closedAt' hB.1 hj ha, inst_closedAt' hB.2.1 hj ha, ?_⟩
+    exact inst_closedAt' hB.2.2 (by omega) (by simpa using ha)
+
+theorem Term.liftN_closedAt_unshift {k : Nat} : ∀ {t : Term} {n c : Nat},
+    (liftN k c t).ClosedAt (n + k) → c ≤ n → t.ClosedAt n
+  | .var i, n, c, h, hc => by
+    by_cases hi : i < c
+    · simp only [liftN, hi, ↓reduceIte, ClosedAt] at h; show i < n; omega
+    · simp only [liftN, hi, ↓reduceIte, ClosedAt] at h; show i < n; omega
+  | .const _, _, _, _, _ => trivial
+  | .app f a, n, c, h, hc => ⟨liftN_closedAt_unshift h.1 hc, liftN_closedAt_unshift h.2 hc⟩
+  | .bind b A t, n, c, h, hc => by
+    refine ⟨liftN_closedAt_unshift h.1 hc, liftN_closedAt_unshift h.2.1 hc, ?_⟩
+    exact liftN_closedAt_unshift (by simpa [Nat.add_right_comm] using h.2.2) (by omega)
+
+theorem ctxScoped_get : ∀ {Γ : Ctx} {i : Nat} {A : Term}, CtxScoped Γ → Γ[i]? = some A →
+    A.ClosedAt (Γ.length - i - 1)
+  | [], _, _, _, h => by simp at h
+  | B :: Γ, 0, A, hs, h => by simp at h; subst h; simpa using hs.1
+  | B :: Γ, i + 1, A, hs, h => by
+    simp only [List.getElem?_cons_succ] at h
+    have := ctxScoped_get hs.2 h
+    simpa [show Γ.length + 1 - (i + 1) - 1 = Γ.length - i - 1 by omega] using this
+
+/-- **Scoping**: in a derivable LF judgment with a well-scoped context, all terms only use
+variables of the context. The signature's declarations must be closed. -/
+theorem scoping {S : Sig}
+    (hS : ∀ c A d, S c = some ⟨some A, d⟩ → A.ClosedAt 0 ∧ ∀ e, d = some e → e.ClosedAt 0)
+    {J : Judgment} (h : Derivable foundation S J) : CtxScoped J.ctx → J.Scoped := by
+  induction h with
+  | @const Γ c A d hc =>
+    intro _; exact ⟨trivial, (hS c A d hc).1.mono (Nat.zero_le _)⟩
+  | @defn Γ c A d hc =>
+    intro _
+    exact ⟨trivial, ((hS c A (some d) hc).2 d rfl).mono (Nat.zero_le _),
+      (hS c A (some d) hc).1.mono (Nat.zero_le _)⟩
+  | rule hr _ ih =>
+    intro hΓ
+    have IH := fun p (hp : p ∈ _) (hc : CtxScoped p.ctx) => ih p hp hc
+    cases hr with
+    | univ Γ => exact ⟨trivial, trivial⟩
+    | var Γ i A hi =>
+      simp only [Judgment.ctx] at hΓ
+      have hl : i < Γ.length := by
+        rcases Nat.lt_or_ge i Γ.length with h' | h'
+        · exact h'
+        · rw [List.getElem?_eq_none h'] at hi; cases hi
+      refine ⟨by show i < Γ.length; exact hl, ?_⟩
+      have := Term.liftN_closedAt_shift (k := i + 1) (ctxScoped_get hΓ hi) (Nat.zero_le _)
+      rwa [show Γ.length - i - 1 + (i + 1) = Γ.length by omega] at this
+    | piType Γ A B =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.typing Γ A type) (by simp) hΓ
+      have h2 := IH (.typing (A :: Γ) B type) (by simp) (⟨h1.1, hΓ⟩ : CtxScoped (A :: Γ))
+      exact ⟨⟨trivial, h1.1, by simpa using h2.1⟩, trivial⟩
+    | piKind Γ A B =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.typing Γ A type) (by simp) hΓ
+      have h2 := IH (.typing (A :: Γ) B kind) (by simp) (⟨h1.1, hΓ⟩ : CtxScoped (A :: Γ))
+      exact ⟨⟨trivial, h1.1, by simpa using h2.1⟩, trivial⟩
+    | lamI Γ A B t =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.typing Γ A type) (by simp) hΓ
+      have h2 := IH (.typing (A :: Γ) t B) (by simp) (⟨h1.1, hΓ⟩ : CtxScoped (A :: Γ))
+      exact ⟨⟨trivial, h1.1, by simpa using h2.1⟩, ⟨trivial, h1.1, by simpa using h2.2⟩⟩
+    | appE Γ A B f a =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.typing Γ f (Pi A B)) (by simp) hΓ
+      have h2 := IH (.typing Γ a A) (by simp) hΓ
+      exact ⟨⟨h1.1, h2.1⟩, Term.inst_closedAt' h1.2.2.2 (Nat.zero_le _) (by simpa using h2.1)⟩
+    | conv Γ t A B U =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.typing Γ t A) (by simp) hΓ
+      have h2 := IH (.equal Γ A B U) (by simp) hΓ
+      exact ⟨h1.1, h2.2.1⟩
+    | refl Γ t A =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.typing Γ t A) (by simp) hΓ
+      exact ⟨h1.1, h1.1, h1.2⟩
+    | symm Γ t u A =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.equal Γ t u A) (by simp) hΓ
+      exact ⟨h1.2.1, h1.1, h1.2.2⟩
+    | trans Γ t u v A =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.equal Γ t u A) (by simp) hΓ
+      have h2 := IH (.equal Γ u v A) (by simp) hΓ
+      exact ⟨h1.1, h2.2.1, h1.2.2⟩
+    | piCong Γ A A' B B' U =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.equal Γ A A' type) (by simp) hΓ
+      have h2 := IH (.equal (A :: Γ) B B' (liftN 1 0 U)) (by simp) (⟨h1.1, hΓ⟩ : CtxScoped (A :: Γ))
+      exact ⟨⟨trivial, h1.1, by simpa using h2.1⟩, ⟨trivial, h1.2.1, by simpa using h2.2.1⟩,
+        Term.liftN_closedAt_unshift (k := 1) (by simpa using h2.2.2) (Nat.zero_le _)⟩
+    | lamCong Γ A A' B t t' =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.equal Γ A A' type) (by simp) hΓ
+      have h2 := IH (.equal (A :: Γ) t t' B) (by simp) (⟨h1.1, hΓ⟩ : CtxScoped (A :: Γ))
+      exact ⟨⟨trivial, h1.1, by simpa using h2.1⟩, ⟨trivial, h1.2.1, by simpa using h2.2.1⟩,
+        ⟨trivial, h1.1, by simpa using h2.2.2⟩⟩
+    | appCong Γ A B f f' a a' =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.equal Γ f f' (Pi A B)) (by simp) hΓ
+      have h2 := IH (.equal Γ a a' A) (by simp) hΓ
+      exact ⟨⟨h1.1, h2.1⟩, ⟨h1.2.1, h2.2.1⟩,
+        Term.inst_closedAt' h1.2.2.2.2 (Nat.zero_le _) (by simpa using h2.1)⟩
+    | beta Γ A B t a =>
+      simp only [Judgment.ctx] at hΓ
+      have h2 := IH (.typing Γ a A) (by simp) hΓ
+      have h1 := IH (.typing (A :: Γ) t B) (by simp) (⟨h2.2, hΓ⟩ : CtxScoped (A :: Γ))
+      exact ⟨⟨⟨trivial, h2.2, by simpa using h1.1⟩, h2.1⟩,
+        Term.inst_closedAt' (by simpa using h1.1) (Nat.zero_le _) (by simpa using h2.1),
+        Term.inst_closedAt' (by simpa using h1.2) (Nat.zero_le _) (by simpa using h2.1)⟩
+    | eta Γ A B f =>
+      simp only [Judgment.ctx] at hΓ
+      have h1 := IH (.typing Γ f (Pi A B)) (by simp) hΓ
+      refine ⟨h1.1, ⟨trivial, h1.2.2.1, ?_, ?_⟩, h1.2⟩
+      · have := Term.liftN_closedAt_shift (k := 1) h1.1 (Nat.zero_le _)
+        simpa using this
+      · show 0 < Γ.length + 1; omega
+
 end LF
 
 end MMT
