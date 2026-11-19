@@ -1,6 +1,7 @@
 import MMTFormal.LF
 import MMTFormal.Modules
 import MMTFormal.Checker
+import MMTFormal.Homomorphism
 
 /-!
 # Example: a view and structures over LF
@@ -227,5 +228,38 @@ theorem reject_op_x : Checker.typeCheck magmaSig [U] (.app (.const gOp) (.var 0)
 /-- By soundness, the accepted judgments are derivable. -/
 example : Derivable LF.foundation magmaSig (.typing [U] (.var 0) V) :=
   Checker.check_sound check_conv
+
+/-! ### The homomorphism functor on magmas
+
+`Hom(Magma)` declares `U¹, U², U^h : U¹ → U²`, `op¹, op²`, and
+`op^h : Π x y : U¹. ded (U^h (op¹ x y) = op² (U^h x) (U^h y))`. -/
+
+/-- Magmas as a first-order signature. -/
+def magmaFO : Hom.FOSig where
+  thy := "MagmaFO"
+  isSort n := n == "U"
+  op? n := if n = "op" then some (["U", "U"], "U") else none
+  sort_not_op n h := by simp at h; subst h; decide
+  op_sorts f as b h := by
+    by_cases hf : f = "op"
+    · simp [hf] at h; obtain ⟨rfl, rfl⟩ := h; simp
+    · simp [hf] at h
+  thy_ne_sfol := by decide
+  thy_ne_lf := by decide
+
+/-- The homomorphism axiom for `op` is well-typed in `Hom(Magma)`. -/
+theorem hom_op_typed :
+    Hom.D (Hom.homSig "HomMagma" magmaFO)
+      (.typing [] (Hom.homAx "HomMagma" magmaFO "op" ["U", "U"] "U") LF.type) :=
+  Hom.homAx_typed (by decide) (by simp [magmaFO])
+
+/-- The axiom is literally `Π x:U¹. Π y:U¹. ded (eq U² (U^h (op¹ x y)) (op² (U^h x) (U^h y)))`. -/
+example : Hom.homAx "HomMagma" magmaFO "op" ["U", "U"] "U" =
+    let c (k n : String) : Term := .const ⟨"HomMagma", .sub k "MagmaFO" n⟩
+    LF.Pi (c "1" "U") (LF.Pi (c "1" "U")
+      (Hom.ded (Hom.eqT (c "2" "U")
+        (.app (c "h" "U") (.app (.app (c "1" "op") (.var 1)) (.var 0)))
+        (.app (.app (c "2" "op") (.app (c "h" "U") (.var 1))) (.app (c "h" "U") (.var 0)))))) :=
+  rfl
 
 end MMT.Example
