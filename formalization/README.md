@@ -29,6 +29,7 @@ classical logic.
 | `PushoutFunctor.lean` | The pushout functor along a meta-theory morphism `m : M → M'`: theories, morphisms, connectors, functor laws | `api/modules/diagrams/PushoutOperator.scala` (`PushoutFunctor`, `PushoutConnector`) |
 | `Homomorphism.lean` | The homomorphism functor on first-order signatures over a logic `SFOL`: the theory `Hom(Σ)` of homomorphisms between two models, its well-formedness, its action on signature morphisms, and the projections | diagram operators (homomorphism functor) |
 | `HomView.lean` | The homomorphism functor on views that send operations to compound terms: proof terms built by induction on the term, multi-step β-reduction, and conversion to the translated axiom | diagram operators (homomorphism functor) |
+| `ViewChecker.lean` | An executable view checker over a library: computable visibility and flattening (sound), a decidable completeness certificate for the visible theories, and soundness of the check | `api/checking/MMTStructureChecker.scala` (view checking) |
 | `Unknowns.lean` | Unknowns as in MMT's Solver: solutions as morphisms, transport of derivations, first-order unification, and solving followed by checking | `api/checking/Solver.scala` (unknowns, solutions) |
 | `Checker.lean` | An executable type checker for LF (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer, hence is sound by construction | `api/checking/{Solver,Rules}.scala`, `mmt-lf` rules |
 | `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, `Bimagma` with two structures `add, mul : Magma`, and runs of the checker. Each is checked and used to transport a typing derivation | — |
@@ -129,6 +130,12 @@ classical logic.
     `f^h` to `λx⃗. P(t)`;
   * `Example.hom_plusZeroView`: the view `Magma → Nat`,
     `op ↦ λx y. plus x (plus y zero)`.
+* View checker:
+  * `checkView_sound`: if the executable view checker accepts a view, the view is a
+    well-typed morphism between the flattenings;
+  * `Example.plusView_checks`, `plusView_wellTyped'`: the view `Magma → NatArith` is
+    checked by `decide`, replacing the hand proof;
+  * `Example.badView_rejected`: a view with an ill-typed assignment is rejected.
 * Unknowns:
   * `solution_isMorphism`, `solution_transport`: a solution whose terms have the
     declared types of their unknowns is a well-typed morphism from the signature
@@ -197,6 +204,9 @@ classical logic.
 * For compound-term views the functor laws hold only up to equality of proofs: for
   example, `Hom(φ;ψ)(f^h)` and `(Hom φ;Hom ψ)(f^h)` are different proof terms of the
   same type. Proving them equal would need proof irrelevance in the logic.
+* The view checker covers domains whose visible theories declare no structures. It
+  checks that the theories visible from the domain are visible from the codomain, and
+  that their declarations do not mention the domain. Other views are rejected.
 * The checker is a model of the Solver's architecture, not a verification of the Scala
   code. It is sound by construction, since every answer carries its derivation. It
   works with fuel and gives no completeness guarantee.

@@ -3,6 +3,7 @@ import MMTFormal.Modules
 import MMTFormal.Checker
 import MMTFormal.HomView
 import MMTFormal.Unknowns
+import MMTFormal.ViewChecker
 
 /-!
 # Example: a view and structures over LF
@@ -348,5 +349,20 @@ theorem idApp_solved :
 theorem idApp_checkSolved :
     checkSolved polySig [⟨.base "A", LF.type, .const gNat⟩] [] idApp (.const gNat) = true := by
   decide
+
+/-! ### Checking the view automatically -/
+
+/-- The view checker accepts `plusView`. -/
+theorem plusView_checks : checkView lib 4 plusView = true := by decide
+
+/-- Hence `plusView` is well-typed, without the hand proof above. -/
+theorem plusView_wellTyped' : plusView.WellTyped LF.foundation lib :=
+  checkView_sound plusView_checks
+
+def badView : View :=
+  { dom := "Magma", cod := "NatArith", assign := [("U", N), ("op", .const gZero)] }
+
+/-- A wrong view is rejected: `op ↦ zero` does not have type `N → N → N`. -/
+theorem badView_rejected : checkView lib 4 badView = false := by decide
 
 end MMT.Example

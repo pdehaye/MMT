@@ -1,0 +1,272 @@
+import MMTFormal.Unknowns
+import MMTFormal.Modules
+
+/-!
+# A verified view checker
+
+MMT checks a view `v : dom → cod` assignment by assignment (`MMTStructureChecker`): every
+constant of the domain must be mapped to a term of the translated type in the codomain.
+This file gives an executable version of that check over a `Library`, built from the
+sound LF checker, and proves it sound: if it accepts, the view is a well-typed morphism
+(`checkView_sound`).
+
+Ingredients:
+* `visibleB`: visibility by bounded search, sound w.r.t. `Visible`;
+* `flatB`: computable flattening, sound w.r.t. `flat` (it covers constants with base
+  names, i.e. not structure copies);
+* `reach`: the theories visible from the domain, by bounded search, together with a
+  decidable certificate that the list is complete (it is closed under include and
+  meta-theory edges).
+
+The checker handles domains whose visible theories declare no structures; it rejects
+other views (soundly).
+-/
+
+namespace MMT
+
+/-! ## Computable visibility -/
+
+/-- The theories directly visible from `T`: its includes and its meta-theory. -/
+def edges (L : Library) (T : ThyName) : List ThyName :=
+  match L T with
+  | some th => (th.decls.filterMap fun | .incl S => some S | _ => none) ++ th.metaThy.toList
+  | none => []
+
+theorem edges_visible {L : Library} {T S : ThyName} (h : S ∈ edges L T) : Visible L T S := by
+  unfold edges at h
+  split at h
+  · rename_i th hth
+    rcases List.mem_append.mp h with h | h
+    · obtain ⟨d, hd, hds⟩ := List.mem_filterMap.mp h
+      cases d with
+      | incl S' => cases hds; exact .incl hth hd (.refl _)
+      | const => cases hds
+      | struct => cases hds
+    · cases hm : th.metaThy with
+      | none => rw [hm] at h; cases h
+      | some M => rw [hm] at h; simp at h; subst h; exact .metaThy hth hm (.refl _)
+  · cases h
+
+/-- Visibility by bounded search. -/
+def visibleB (L : Library) : Nat → ThyName → ThyName → Bool
+  | 0, T, S => T == S
+  | n + 1, T, S => T == S || (edges L T).any fun R => visibleB L n R S
+
+theorem visibleB_sound {L : Library} : ∀ {n : Nat} {T S : ThyName},
+    visibleB L n T S = true → Visible L T S
+  | 0, T, S, h => by simp [visibleB] at h; subst h; exact .refl _
+  | n + 1, T, S, h => by
+    simp only [visibleB, Bool.or_eq_true, beq_iff_eq, List.any_eq_true] at h
+    rcases h with rfl | ⟨R, hR, hv⟩
+    · exact .refl _
+    · exact (edges_visible hR).trans (visibleB_sound hv)
+
+/-- The theories reached from `T` within `n` rounds. -/
+def reach (L : Library) : Nat → ThyName → List ThyName
+  | 0, T => [T]
+  | n + 1, T => T :: (edges L T).flatMap (reach L n)
+
+theorem self_mem_reach (L : Library) (n : Nat) (T : ThyName) : T ∈ reach L n T := by
+  cases n <;> simp [reach]
+
+/-- A list closed under edges contains everything visible from its members. -/
+theorem visible_mem_of_closed {L : Library} {Ls : List ThyName}
+    (hcl : ∀ R ∈ Ls, ∀ S ∈ edges L R, S ∈ Ls) {T S : ThyName} (hT : T ∈ Ls)
+    (h : Visible L T S) : S ∈ Ls := by
+  induction h with
+  | refl => exact hT
+  | incl hth hS _ ih =>
+    refine ih (hcl _ hT _ ?_)
+    unfold edges; rw [hth]
+    exact List.mem_append_left _ (List.mem_filterMap.mpr ⟨_, hS, rfl⟩)
+  | metaThy hth hM _ ih =>
+    refine ih (hcl _ hT _ ?_)
+    simp [edges, hth, hM]
+
+/-- Decidable check that a list is closed under edges. -/
+def closedUnderEdges (L : Library) (Ls : List ThyName) : Bool :=
+  Ls.all fun R => (edges L R).all fun S => Ls.contains S
+
+theorem closedUnderEdges_sound {L : Library} {Ls : List ThyName}
+    (h : closedUnderEdges L Ls = true) : ∀ R ∈ Ls, ∀ S ∈ edges L R, S ∈ Ls := by
+  intro R hR S hS
+  simp only [closedUnderEdges, List.all_eq_true, List.contains_iff_mem] at h
+  exact h R hR S hS
+
+/-! ## Computable flattening -/
+
+/-- Flattening restricted to constants with base names, by bounded search. -/
+def flatB (L : Library) (n : Nat) (T : ThyName) : Sig := fun c =>
+  if visibleB L n T c.thy then
+    match c.name with
+    | .base m => (L c.thy).bind (·.localLookup m)
+    | _ => none
+  else none
+
+theorem flatB_sub (L : Library) (n : Nat) (T : ThyName) : (flatB L n T).Sub (flat L T) := by
+  intro c i h
+  unfold flatB at h
+  split at h
+  · rename_i hv
+    obtain ⟨t, nm⟩ := c
+    cases nm with
+    | base m => exact flat_eq_some.mpr ⟨visibleB_sound hv, h⟩
+    | sub => cases h
+  · cases h
+
+/-! ## Checking a view -/
+
+/-- The theory declares no structures. -/
+def noStructs (th : Theory) : Bool := th.decls.all fun | .struct .. => false | _ => true
+
+/-- The term mentions no constant of theory `D`. -/
+def avoids (D : ThyName) : Term → Bool
+  | .var _ => true
+  | .const c => c.thy != D
+  | .app f a => avoids D f && avoids D a
+  | .bind b A t => avoids D b && avoids D A && avoids D t
+
+theorem avoids_sound : ∀ {D : ThyName} {t : Term}, avoids D t = true →
+    t.UsesOnly fun c => c.thy ≠ D
+  | _, .var _, _ => trivial
+  | D, .const c, h => by simpa [avoids, Term.UsesOnly] using h
+  | D, .app f a, h => by
+    simp only [avoids, Bool.and_eq_true] at h
+    exact ⟨avoids_sound h.1, avoids_sound h.2⟩
+  | D, .bind b A t, h => by
+    simp only [avoids, Bool.and_eq_true] at h
+    exact ⟨avoids_sound h.1.1, avoids_sound h.1.2, avoids_sound h.2⟩
+
+def optAll (p : Term → Bool) : Option Term → Bool
+  | some t => p t
+  | none => true
+
+/-- Check one local constant `n` of the domain against its assignment. -/
+def checkConst (L : Library) (k : Nat) (v : View) (th : Theory) (n : String) : Bool :=
+  match th.localLookup n with
+  | some ⟨some A, d⟩ =>
+    LF.Checker.typeCheck (flatB L k v.cod) [] (v.toSubst ⟨v.dom, n⟩) (A.trans v.toSubst) &&
+    optAll (fun e => LF.Checker.eqCheck (flatB L k v.cod) [] (v.toSubst ⟨v.dom, n⟩)
+      (e.trans v.toSubst) (A.trans v.toSubst)) d
+  | some ⟨none, _⟩ => true
+  | none => true
+
+/-- Check a theory other than the domain that is visible from it: it must also be visible
+from the codomain, and its declarations must not mention the domain. -/
+def checkShared (L : Library) (k : Nat) (v : View) (R : ThyName) : Bool :=
+  R == v.dom || (visibleB L k v.cod R &&
+    match L R with
+    | some th => th.decls.all fun
+        | .const _ tp df => optAll (avoids v.dom) tp && optAll (avoids v.dom) df
+        | _ => true
+    | none => true)
+
+/-- **The view checker.** `k` bounds the searches. -/
+def checkView (L : Library) (k : Nat) (v : View) : Bool :=
+  let Ls := reach L k v.dom
+  closedUnderEdges L Ls &&
+  Ls.all (fun R => match L R with | some th => noStructs th | none => true) &&
+  v.dom != LF.thy &&
+  v.assign.all (fun p => closedB 0 p.2) &&
+  (match L v.dom with
+   | some th => th.decls.all fun | .const n _ _ => checkConst L k v th n | _ => true
+   | none => true) &&
+  Ls.all (checkShared L k v)
+
+/-! ## Soundness -/
+
+theorem localLookup_mem {th : Theory} {n : String} {i : ConstInfo}
+    (h : th.localLookup n = some i) : Decl.const n i.tp i.df ∈ th.decls := by
+  unfold Theory.localLookup at h
+  obtain ⟨d, hd, hds⟩ := List.exists_of_findSome?_eq_some h
+  cases d with
+  | const n' tp df =>
+    simp only at hds
+    split at hds
+    · subst_vars; cases hds; exact hd
+    · cases hds
+  | incl => cases hds
+  | struct => cases hds
+
+theorem homeInfo_base_of_noStructs {L : Library} {R : ThyName} {th : Theory} (hR : L R = some th)
+    (hns : noStructs th = true) {nm : LName} {i : ConstInfo} (h : homeInfo L R nm = some i) :
+    ∃ m, nm = .base m ∧ th.localLookup m = some i := by
+  cases nm with
+  | base m => exact ⟨m, rfl, by simpa [homeInfo, hR] using h⟩
+  | sub s S0 o =>
+    exfalso
+    have hsl : th.structLookup s = none := by
+      unfold Theory.structLookup
+      rw [List.findSome?_eq_none_iff]
+      intro d hd
+      simp only [noStructs, List.all_eq_true] at hns
+      have := hns d hd
+      cases d with
+      | struct => simp at this
+      | _ => rfl
+    simp [homeInfo, hR, hsl] at h
+
+theorem homeInfo_none {L : Library} {R : ThyName} (h : L R = none) (nm : LName) :
+    homeInfo L R nm = none := by
+  cases nm <;> simp [homeInfo, h]
+
+theorem trans_avoids {v : View} {t : Term} (h : avoids v.dom t = true) :
+    t.trans v.toSubst = t := by
+  rw [Term.trans_congr (avoids_sound h) (τ := Subst.id) (fun c hc => View.toSubst_other hc),
+    Term.trans_id]
+
+/-- **Soundness of the view checker.** -/
+theorem checkView_sound {L : Library} {k : Nat} {v : View} (h : checkView L k v = true) :
+    v.WellTyped LF.foundation L := by
+  simp only [checkView, Bool.and_eq_true, List.all_eq_true, bne_iff_ne, ne_eq] at h
+  obtain ⟨⟨⟨⟨⟨hcl, hns⟩, hlf⟩, hasg⟩, hloc⟩, hsh⟩ := h
+  have hcl' := closedUnderEdges_sound hcl
+  have hdom : v.dom ∈ reach L k v.dom := self_mem_reach L k v.dom
+  -- the domain's theories have no structures
+  have noS : ∀ R, Visible L v.dom R → ∀ th, L R = some th → noStructs th = true := by
+    intro R hv th hth
+    have := hns R (visible_mem_of_closed hcl' hdom hv)
+    rw [hth] at this; exact this
+  apply View.isMorphism_of_check
+  · intro p hp; exact closedB_sound (hasg p hp)
+  · intro c hc
+    simp only [LF.foundation] at hc
+    rw [hc]; exact Ne.symm hlf
+  · intro n A d hfl
+    obtain ⟨-, hhi⟩ := flat_eq_some.mp hfl
+    cases hth : L v.dom with
+    | none => rw [homeInfo_none hth] at hhi; cases hhi
+    | some th =>
+      obtain ⟨m, hm, hll⟩ := homeInfo_base_of_noStructs hth (noS _ (.refl _) th hth) hhi
+      subst hm
+      rw [hth] at hloc
+      simp only [List.all_eq_true] at hloc
+      have := hloc _ (localLookup_mem hll)
+      simp only [checkConst, hll, Bool.and_eq_true] at this
+      obtain ⟨hty, hdf⟩ := this
+      refine ⟨(LF.Checker.check_sound hty).mono (flatB_sub L k v.cod), ?_⟩
+      intro e he
+      subst he
+      exact (LF.Checker.eq_sound hdf).mono (flatB_sub L k v.cod)
+  · intro c i hne hfl
+    obtain ⟨hv, hhi⟩ := flat_eq_some.mp hfl
+    have hmem := visible_mem_of_closed hcl' hdom hv
+    have := hsh c.thy hmem
+    simp only [checkShared, Bool.or_eq_true, beq_iff_eq, hne, false_or,
+      Bool.and_eq_true] at this
+    obtain ⟨hvc, hdecls⟩ := this
+    refine ⟨flat_eq_some.mpr ⟨visibleB_sound hvc, hhi⟩, ?_⟩
+    cases hth : L c.thy with
+    | none => rw [homeInfo_none hth] at hhi; cases hhi
+    | some th =>
+      obtain ⟨m, -, hll⟩ := homeInfo_base_of_noStructs hth (noS _ hv th hth) hhi
+      rw [hth] at hdecls
+      simp only [List.all_eq_true] at hdecls
+      have := hdecls _ (localLookup_mem hll)
+      simp only [Bool.and_eq_true] at this
+      obtain ⟨htp, hdf⟩ := this
+      refine ⟨fun A hA => ?_, fun e he => ?_⟩
+      · rw [hA] at htp; exact trans_avoids htp
+      · rw [he] at hdf; exact trans_avoids hdf
+
+end MMT
