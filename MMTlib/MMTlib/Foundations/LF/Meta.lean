@@ -217,6 +217,7 @@ theorem ctxIns_length : ∀ {c : Nat} {B : Term} {Γ : Ctx}, c ≤ Γ.length →
 
 namespace Judgment
 
+/-- The context of a judgment. -/
 def ctx : Judgment → Ctx
   | typing Γ _ _ => Γ
   | equal Γ _ _ _ => Γ

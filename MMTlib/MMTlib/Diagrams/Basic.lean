@@ -37,7 +37,9 @@ namespace MMT
 /-- A linear functor given by a systematic renaming that fixes the foundation's
 meta-symbols. -/
 structure LinFunctor (F : Foundation) where
+  /-- The renaming of constants. -/
   ren : Renaming
+  /-- Meta-symbols are not renamed. -/
   fixMeta : ∀ c, F.metaSym c → ren.fwd c = c
 
 namespace LinFunctor
@@ -189,7 +191,9 @@ end LinFunctor
 
 /-- A diagram: theories and morphisms between them (edges `(source, target, σ)`). -/
 structure Diagram where
+  /-- The theories. -/
   nodes : List Sig
+  /-- The edges `(source, target, morphism)`. -/
   edges : List (Nat × Nat × Subst)
 
 namespace Diagram

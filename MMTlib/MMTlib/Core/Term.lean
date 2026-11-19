@@ -22,7 +22,9 @@ abbrev ThyName := String
 /-- Local names of constants (MMT `LocalName`). `sub s S c` is the copy of the
 constant `S?c` induced by the structure `s` (MMT: the complex name `[S]/s/c`). -/
 inductive LName where
+  /-- A base name. -/
   | base (n : String)
+  /-- The copy of the constant `thy?orig` induced by the structure `s`. -/
   | sub  (s : String) (thy : ThyName) (orig : LName)
 deriving DecidableEq, Repr, Inhabited
 
@@ -30,15 +32,21 @@ instance : Coe String LName := ⟨LName.base⟩
 
 /-- Global names of constants (MMT `GlobalName = MPath ? LocalName`). -/
 structure GName where
+  /-- The home theory. -/
   thy  : ThyName
+  /-- The local name. -/
   name : LName
 deriving DecidableEq, Repr, Inhabited
 
 /-- MMT terms. -/
 inductive Term where
+  /-- A bound variable (de Bruijn index). -/
   | var   (i : Nat)
+  /-- A constant, by global name. -/
   | const (c : GName)
+  /-- Application. -/
   | app   (f a : Term)
+  /-- Binding: binder, type of the bound variable, body. -/
   | bind  (binder tp body : Term)
 deriving DecidableEq, Repr, Inhabited
 

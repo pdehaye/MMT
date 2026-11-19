@@ -26,11 +26,17 @@ open LF Term Judgment
 /-- Equational axioms over a first-order signature: variable sorts (`var i` has sort
 `as.reverse[i]`), the two sides, and their sort. -/
 structure EqAxioms (Sg : FOSig) where
+  /-- Axioms by name: variable sorts, the two sides, and their sort. -/
   ax? : String → Option (List String × FOT × FOT × String)
+  /-- Axiom names are not sorts. -/
   not_sort : ∀ n a, ax? n = some a → Sg.isSort n = false
+  /-- Axiom names are not operations. -/
   not_op : ∀ n a, ax? n = some a → Sg.op? n = none
+  /-- Variable sorts are sorts. -/
   sorts : ∀ n as s t b, ax? n = some (as, s, t, b) → ∀ a ∈ as, Sg.isSort a = true
+  /-- The left-hand side is well-sorted. -/
   lhs : ∀ n as s t b, ax? n = some (as, s, t, b) → WS Sg as.reverse s [] b
+  /-- The right-hand side is well-sorted. -/
   rhs : ∀ n as s t b, ax? n = some (as, s, t, b) → WS Sg as.reverse t [] b
 
 variable (H : ThyName)
@@ -195,6 +201,7 @@ def FOT.rename (φ : String → String) : FOT → FOT
 
 /-- A signature morphism that maps axioms to axioms with the renamed statement. -/
 structure FOMorA {Sg Sg' : FOSig} (E : EqAxioms Sg) (E' : EqAxioms Sg') extends FOMor Sg Sg' where
+  /-- Axioms are mapped to axioms with the renamed statement. -/
   ax : ∀ n as s t b, E.ax? n = some (as, s, t, b) →
     E'.ax? (φ n) = some (as.map φ, s.rename φ, t.rename φ, φ b)
 

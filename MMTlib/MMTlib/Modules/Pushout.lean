@@ -49,9 +49,13 @@ def Subst.LandsIn (σ : Subst) (S T : Sig) : Prop := ∀ c, S.Has c → (σ c).U
 /-- An injective renaming of constants with a partial inverse. It is used to pick fresh
 names for the copied constants (MMT: `c ↦ T?s/c`). -/
 structure Renaming where
+  /-- The renaming. -/
   fwd : GName → GName
+  /-- Its partial inverse. -/
   bwd : GName → Option GName
+  /-- The inverse undoes the renaming. -/
   bwd_fwd : ∀ c, bwd (fwd c) = some c
+  /-- The inverse only returns preimages. -/
   fwd_bwd : ∀ c d, bwd d = some c → fwd c = d
 
 /-! ## The construction -/
@@ -84,12 +88,19 @@ end Construction
 /-- Side conditions of the pushout. -/
 structure PushoutHyp (F : Foundation) (S S' T : Sig) (σ : Subst) (ρ : Renaming)
     (a : GName → Option Term) : Prop where
+  /-- `S ⊆ S'`. -/
   sub      : S.Sub S'
+  /-- `σ : S → T` is well-typed. -/
   mor      : IsMorphism F S T σ
+  /-- `S` is closed. -/
   closedS  : S.Closed
+  /-- Renamed names are fresh for `T`. -/
   fresh    : ∀ c, T (ρ.fwd c) = none
+  /-- New constants are not meta-symbols. -/
   metaNew  : ∀ c, isNew S S' c = true → ¬ F.metaSym c
+  /-- Renamed names are not meta-symbols. -/
   metaFwd  : ∀ c, ¬ F.metaSym (ρ.fwd c)
+  /-- Assignments only define new constants without definiens. -/
   assignOk : ∀ c t, a c = some t → isNew S S' c = true ∧ ∃ A, S' c = some ⟨some A, none⟩
 
 section Lemmas
@@ -342,10 +353,15 @@ end Universal
 copied into the host under the renaming `ρ` (MMT: `c ↦ T?s/c`). Assignments define
 copied constants that were undefined. -/
 structure Structure where
+  /-- The meta-theory, shared by domain and host. -/
   M      : Sig
+  /-- The imported theory. -/
   S      : Sig
+  /-- The host theory. -/
   T      : Sig
+  /-- The renaming of copied constants. -/
   ρ      : Renaming
+  /-- The assignments. -/
   assign : GName → Option Term
 
 namespace Structure
@@ -360,12 +376,19 @@ def mor : Subst := poMor s.M s.S Subst.id s.ρ
 
 /-- Well-formedness conditions for a structure. -/
 structure WF (F : Foundation) : Prop where
+  /-- The meta-theory is part of the imported theory. -/
   metaS    : s.M.Sub s.S
+  /-- The meta-theory is part of the host. -/
   metaT    : s.M.Sub s.T
+  /-- The meta-theory is closed. -/
   closedM  : s.M.Closed
+  /-- Copied names are fresh for the host. -/
   fresh    : ∀ c, s.T (s.ρ.fwd c) = none
+  /-- New constants are not meta-symbols. -/
   metaNew  : ∀ c, isNew s.M s.S c = true → ¬ F.metaSym c
+  /-- Copied names are not meta-symbols. -/
   metaFwd  : ∀ c, ¬ F.metaSym (s.ρ.fwd c)
+  /-- Assignments only define new constants without definiens. -/
   assignOk : ∀ c t, s.assign c = some t →
     isNew s.M s.S c = true ∧ ∃ A, s.S c = some ⟨some A, none⟩
 

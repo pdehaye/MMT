@@ -21,9 +21,13 @@ def Sig.transSig (S : Sig) (φ : Subst) : Sig := fun c =>
 other constants, under which every rule of `F₁` is derivable in `F₂` (over signatures
 satisfying `P`). -/
 structure FMor (F₁ F₂ : Foundation) (P : Sig → Prop) where
+  /-- The translation of the source meta-symbols. -/
   φ : Subst
+  /-- The translation produces closed terms. -/
   closed : φ.Closed
+  /-- Constants other than meta-symbols are kept. -/
   fix : ∀ c, ¬ F₁.metaSym c → φ c = .const c
+  /-- Every source rule becomes derivable in the target after translation. -/
   rules : ∀ S, P S → ∀ {ps j}, F₁.Rule ps j →
     (∀ p ∈ ps, Derivable F₂ (S.transSig φ) (p.trans φ)) →
     Derivable F₂ (S.transSig φ) (j.trans φ)

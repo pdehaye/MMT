@@ -31,7 +31,9 @@ abbrev Ctx := List Term
 
 /-- Judgments of the foundation. -/
 inductive Judgment where
+  /-- `Γ ⊢ t : A` -/
   | typing (Γ : Ctx) (t A : Term)
+  /-- `Γ ⊢ t ≡ u : A` -/
   | equal  (Γ : Ctx) (t u A : Term)
 deriving DecidableEq, Repr
 
@@ -59,7 +61,9 @@ end Judgment
 
 /-- Information about a constant: optional type and optional definiens. -/
 structure ConstInfo where
+  /-- The type, if any. -/
   tp : Option Term
+  /-- The definiens, if any. -/
   df : Option Term
 deriving DecidableEq, Repr
 
@@ -72,19 +76,26 @@ def Sig.Sub (S T : Sig) : Prop := ∀ c i, S c = some i → T c = some i
 /-- A foundation: the inference rules of a meta-theory such as LF.
 `metaSym` are the symbols the rules may mention; morphisms must fix them. -/
 structure Foundation where
+  /-- The symbols of the meta-theory the rules may mention. -/
   metaSym : GName → Prop
+  /-- The inference rules: premises and conclusion. -/
   Rule    : List Judgment → Judgment → Prop
+  /-- Rules are schematic: stable under translations that fix the meta-symbols. -/
   stable_trans : ∀ (σ : Subst), σ.Closed → (∀ c, metaSym c → σ c = .const c) →
     ∀ {ps j}, Rule ps j → Rule (ps.map (Judgment.trans σ)) (j.trans σ)
+  /-- Rules are stable under adding outer variables to the context. -/
   stable_extend : ∀ (Δ : Ctx) {ps j}, Rule ps j →
     Rule (ps.map (Judgment.extend Δ)) (j.extend Δ)
 
 /-- Derivability over a signature. Besides the foundation's rules, the module
 system contributes the rules for looking up constants and expanding definitions. -/
 inductive Derivable (F : Foundation) (S : Sig) : Judgment → Prop where
+  /-- A declared constant has its declared type. -/
   | const {Γ c A d} : S c = some ⟨some A, d⟩ → Derivable F S (.typing Γ (.const c) A)
+  /-- A defined constant is equal to its definiens. -/
   | defn  {Γ c A d} : S c = some ⟨some A, some d⟩ →
       Derivable F S (.equal Γ (.const c) d A)
+  /-- An instance of a rule of the foundation. -/
   | rule  {ps j} : F.Rule ps j → (∀ p ∈ ps, Derivable F S p) → Derivable F S j
 
 namespace Derivable
@@ -117,10 +128,14 @@ end Derivable
 assignments are closed, meta-symbols are fixed, every typed constant is mapped to a
 term of the translated type, and definitions are respected. -/
 structure IsMorphism (F : Foundation) (S T : Sig) (σ : Subst) : Prop where
+  /-- Assignments are closed terms. -/
   closed  : σ.Closed
+  /-- Meta-symbols are mapped to themselves. -/
   fixMeta : ∀ c, F.metaSym c → σ c = .const c
+  /-- Every typed constant is mapped to a term of the translated type. -/
   typed   : ∀ {c A d}, S c = some ⟨some A, d⟩ →
     Derivable F T (.typing [] (σ c) (A.trans σ))
+  /-- Definitions are respected. -/
   defn    : ∀ {c A d}, S c = some ⟨some A, some d⟩ →
     Derivable F T (.equal [] (σ c) (d.trans σ) (A.trans σ))
 
@@ -192,8 +207,10 @@ namespace Mor
 
 variable {F : Foundation} {S T U V : Sig}
 
+/-- The identity morphism. -/
 def id (S : Sig) : Mor F S S := ⟨Subst.id, IsMorphism.id S⟩
 
+/-- Composition of morphisms, in diagram order. -/
 def comp (σ : Mor F S T) (τ : Mor F T U) : Mor F S U := ⟨σ.1.comp τ.1, σ.2.comp τ.2⟩
 
 theorem ext {σ τ : Mor F S T} (h : σ.1 = τ.1) : σ = τ := Subtype.ext h

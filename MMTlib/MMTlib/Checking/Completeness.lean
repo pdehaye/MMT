@@ -20,12 +20,18 @@ open Term
 
 /-- Syntax-directed LF typing. -/
 inductive Alg (S : Sig) : Ctx → Term → Term → Prop where
+  /-- A variable has the type of its context entry. -/
   | var {Γ i A} : Γ[i]? = some A → Alg S Γ (.var i) (A.liftN (i + 1) 0)
+  /-- `type : kind`. -/
   | univ {Γ} : Alg S Γ type kind
+  /-- A constant has its declared type. -/
   | const {Γ c A d} : c ≠ typeN → S c = some ⟨some A, d⟩ → Alg S Γ (.const c) A
+  /-- Π-types over a type, in `type` or `kind`. -/
   | pi {Γ A B U} : Alg S Γ A type → Alg S (A :: Γ) B U → (U = type ∨ U = kind) →
       Alg S Γ (Pi A B) U
+  /-- λ-abstraction over a type. -/
   | lam {Γ A B t} : Alg S Γ A type → Alg S (A :: Γ) t B → Alg S Γ (lam A t) (Pi A B)
+  /-- Application, with the argument's type matching the domain exactly. -/
   | app {Γ A B f a} : Alg S Γ f (Pi A B) → Alg S Γ a A → Alg S Γ (.app f a) (inst 0 a B)
 
 /-- `check` succeeds when `infer` returns exactly the expected type. -/

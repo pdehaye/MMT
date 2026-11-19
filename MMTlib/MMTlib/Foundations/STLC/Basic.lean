@@ -17,30 +17,46 @@ open Term Judgment
 
 namespace STLC
 
+/-- The name of the meta-theory STLC. -/
 def thy : ThyName := "STLC"
+/-- The universe of types. -/
 def tpN  : GName := ⟨thy, "tp"⟩
+/-- The function-type former. -/
 def arrN : GName := ⟨thy, "arrow"⟩
+/-- The λ binder. -/
 def lamN : GName := ⟨thy, "lambda"⟩
 
+/-- `tp` -/
 abbrev tp : Term := .const tpN
 /-- `A → B`, as a binder that ignores its variable. -/
 abbrev arr (A B : Term) : Term := .bind (.const arrN) A (B.liftN 1 0)
+/-- `λ x:A. t` -/
 abbrev lam (A t : Term) : Term := .bind (.const lamN) A t
 
 /-- The rules of STLC. -/
 inductive Rule : List Judgment → Judgment → Prop where
+  /-- A variable has the (lifted) type of its context entry. -/
   | var (Γ i A) : Γ[i]? = some A → Rule [] (typing Γ (.var i) (A.liftN (i + 1) 0))
+  /-- Function types of types are types. -/
   | arrF (Γ A B) : Rule [typing Γ A tp, typing Γ B tp] (typing Γ (arr A B) tp)
+  /-- λ-abstraction. -/
   | lamI (Γ A B t) : Rule [typing Γ A tp, typing (A :: Γ) t (B.liftN 1 0)]
       (typing Γ (lam A t) (arr A B))
+  /-- Application. -/
   | appE (Γ A B f a) : Rule [typing Γ f (arr A B), typing Γ a A] (typing Γ (.app f a) B)
+  /-- Reflexivity of equality. -/
   | refl (Γ t A) : Rule [typing Γ t A] (equal Γ t t A)
+  /-- Symmetry of equality. -/
   | symm (Γ t u A) : Rule [equal Γ t u A] (equal Γ u t A)
+  /-- Transitivity of equality. -/
   | trans (Γ t u v A) : Rule [equal Γ t u A, equal Γ u v A] (equal Γ t v A)
+  /-- Congruence for application. -/
   | appCong (Γ A B f f' a a') : Rule [equal Γ f f' (arr A B), equal Γ a a' A]
       (equal Γ (.app f a) (.app f' a') B)
+  /-- Congruence for λ. -/
   | lamCong (Γ A B t t') : Rule [typing Γ A tp, equal (A :: Γ) t t' (B.liftN 1 0)]
       (equal Γ (lam A t) (lam A t') (arr A B))
+  /-- β-equality. -/
   | beta (Γ A B t a) : Rule [typing (A :: Γ) t (B.liftN 1 0), typing Γ a A]
       (equal Γ (.app (lam A t) a) (inst 0 a t) B)
 

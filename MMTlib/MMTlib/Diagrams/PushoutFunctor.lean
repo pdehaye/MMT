@@ -32,15 +32,25 @@ theorem Term.UsesOnly.trans' {P Q : GName → Prop} {σ : Subst} {x : Term}
 /-- The data of a pushout functor: a morphism `m : M → M'` of meta-theories and a
 renaming for the copied constants. -/
 structure PFData (F : Foundation) where
+  /-- The source meta-theory. -/
   M : Sig
+  /-- The target meta-theory. -/
   M' : Sig
+  /-- The meta-theory morphism. -/
   m : Subst
+  /-- The renaming for copied constants. -/
   ρ : Renaming
+  /-- The meta-theory morphism is well-typed. -/
   hm : IsMorphism F M M' m
+  /-- The source meta-theory is closed. -/
   closedM : M.Closed
+  /-- The target meta-theory is closed. -/
   closedM' : M'.Closed
+  /-- The morphism maps into the target meta-theory. -/
   land : m.LandsIn M M'
+  /-- Copied names are fresh for the target meta-theory. -/
   fresh : ∀ c, M' (ρ.fwd c) = none
+  /-- Copied names are not meta-symbols. -/
   metaFwd : ∀ c, ¬ F.metaSym (ρ.fwd c)
 
 namespace PFData
@@ -49,16 +59,23 @@ variable {F : Foundation} (P : PFData F)
 
 /-- A theory over the meta-theory `M`. -/
 structure Thy where
+  /-- The theory. -/
   S : Sig
+  /-- It extends the meta-theory. -/
   sub : P.M.Sub S
+  /-- It is closed. -/
   closed : S.Closed
+  /-- Its own constants are not meta-symbols. -/
   metaNew : ∀ c, isNew P.M S c = true → ¬ F.metaSym c
 
 /-- A morphism of theories over `M`: well-typed, the identity on `M`, and mapping to
 terms over the codomain. -/
 structure Hom (A B : P.Thy) (σ : Subst) : Prop where
+  /-- The morphism is well-typed. -/
   mor : IsMorphism F A.S B.S σ
+  /-- It is the identity on the meta-theory. -/
   fixM : ∀ c, P.M.Has c → σ c = .const c
+  /-- It maps into the codomain. -/
   lands : σ.LandsIn A.S B.S
 
 variable {P}

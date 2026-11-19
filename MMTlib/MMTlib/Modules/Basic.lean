@@ -28,15 +28,20 @@ namespace MMT
 
 /-- Declarations in a theory body. -/
 inductive Decl where
+  /-- A constant with optional type and definiens. -/
   | const  (name : String) (tp df : Option Term)
+  /-- An include of another theory. -/
   | incl   (thy : ThyName)
   /-- `structure name : dom = assign`: imports `dom` with all constants not already
   visible in the host copied under the prefix `name`; `assign` defines copies. -/
   | struct (name : String) (dom : ThyName) (assign : List (GName × Term))
 deriving DecidableEq, Repr
 
+/-- A theory: an optional meta-theory and a list of declarations. -/
 structure Theory where
+  /-- The meta-theory, if any. -/
   metaThy : Option ThyName
+  /-- The declarations. -/
   decls   : List Decl
 deriving Repr
 
@@ -57,8 +62,11 @@ def Theory.structLookup (th : Theory) (s : String) : Option (ThyName × List (GN
 
 /-- `Visible L T S`: the declarations of `S` are visible in `T`. -/
 inductive Visible (L : Library) : ThyName → ThyName → Prop where
+  /-- Every theory sees itself. -/
   | refl (T) : Visible L T T
+  /-- Through an include. -/
   | incl {T S R th} : L T = some th → .incl S ∈ th.decls → Visible L S R → Visible L T R
+  /-- Through the meta-theory. -/
   | metaThy {T M R th} : L T = some th → th.metaThy = some M → Visible L M R → Visible L T R
 
 theorem Visible.trans {L : Library} {T S R : ThyName}
@@ -119,8 +127,11 @@ theorem Visible.isMorphism {L : Library} {T S : ThyName} (F : Foundation) (h : V
 
 /-- A view `dom → cod` with assignments to local constants of `dom`. -/
 structure View where
+  /-- The domain. -/
   dom    : ThyName
+  /-- The codomain. -/
   cod    : ThyName
+  /-- Assignments to local constants of the domain. -/
   assign : List (LName × Term)
 deriving Repr
 

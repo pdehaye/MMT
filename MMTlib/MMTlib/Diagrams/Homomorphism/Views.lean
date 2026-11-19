@@ -270,16 +270,22 @@ end Rules
 /-- First-order terms over a signature, in curried form; variables are de Bruijn
 indices. -/
 inductive FOT where
+  /-- A variable (de Bruijn index). -/
   | var (i : Nat)
+  /-- An operation symbol. -/
   | cnst (g : String)
+  /-- Application. -/
   | app (f x : FOT)
 deriving DecidableEq, Repr
 
 /-- `WS Sg ctx t as b`: in a context of variable sorts `ctx` (`var i` has sort
 `ctx[i]`), `t` has profile `as → b` (a fully applied term has `as = []`). -/
 inductive WS (Sg : FOSig) (ctx : List String) : FOT → List String → String → Prop where
+  /-- A variable has its sort in the context. -/
   | var {i s} : ctx[i]? = some s → WS Sg ctx (.var i) [] s
+  /-- An operation has its profile. -/
   | cnst {g as b} : Sg.op? g = some (as, b) → WS Sg ctx (.cnst g) as b
+  /-- Application consumes the first argument sort. -/
   | app {f x a as b} : WS Sg ctx f (a :: as) b → WS Sg ctx x [] a → WS Sg ctx (.app f x) as b
 
 /-- The profile of a term, computed. -/
@@ -379,7 +385,9 @@ variable {H Sg ctx}
 
 /-- Well-sorted argument lists. -/
 inductive AllWS (Sg : FOSig) (ctx : List String) : List FOT → List String → Prop where
+  /-- The empty list. -/
   | nil : AllWS Sg ctx [] []
+  /-- A well-sorted term followed by well-sorted terms. -/
   | cons {u a us as} : WS Sg ctx u [] a → AllWS Sg ctx us as → AllWS Sg ctx (u :: us) (a :: as)
 
 theorem AllWS.append {us vs : List FOT} {as bs : List String} (h1 : AllWS Sg ctx us as)
@@ -671,8 +679,10 @@ theorem apps_cong {S : Sig} {Γ : Ctx} {F F' T : Term} {us Ts : List Term}
 /-- Variable-like terms: a variable, or a homomorphism symbol applied to a variable that
 lies beyond the first `m` binders. -/
 inductive Atom (H : ThyName) (Sg : FOSig) (C : Ctx) (m : Nat) : Term → Term → Prop where
+  /-- A variable whose context entry is the copy `sᵏ`. -/
   | var {j : Nat} {k s : String} : C[j]? = some (cs H k Sg s) →
       Atom H Sg C m (.var j) (cs H k Sg s)
+  /-- `h_a` applied to a variable beyond the first `m` binders. -/
   | happ {j : Nat} {a : String} : C[j]? = some (cs H "1" Sg a) → m ≤ j → Sg.isSort a = true →
       Atom H Sg C m (.app (cs H "h" Sg a) (.var j)) (cs H "2" Sg a)
 
@@ -740,7 +750,9 @@ theorem Atom.subst {Bs : List Term} {Γ : Ctx} {B : Term} {x T u : Term}
 
 /-- Atom-typed argument lists. -/
 inductive AtomArgs (H : ThyName) (Sg : FOSig) (Γ : Ctx) : List Term → List Term → Prop where
+  /-- The empty list. -/
   | nil : AtomArgs H Sg Γ [] []
+  /-- An atom followed by atoms. -/
   | cons {u T us Ts} : Atom H Sg Γ 0 u T → AtomArgs H Sg Γ us Ts →
       AtomArgs H Sg Γ (u :: us) (T :: Ts)
 
@@ -1095,9 +1107,13 @@ theorem lams_closed {As : List Term} {t : Term} (hAs : ∀ a ∈ As, a.ClosedAt 
 `f : as → b` goes to a term over the codomain in variables `x₁ … xₙ` of sorts
 `φ(as)` (de Bruijn: `xᵢ = var (n-i)`). -/
 structure FOView (Sg Sg' : FOSig) where
+  /-- The map of sorts. -/
   sort : String → String
+  /-- Sorts are mapped to sorts. -/
   sortOk : ∀ n, Sg.isSort n = true → Sg'.isSort (sort n) = true
+  /-- The term assigned to each operation. -/
   opT : String → FOT
+  /-- Assigned terms are well-sorted at the mapped profile. -/
   opOk : ∀ f as b, Sg.op? f = some (as, b) →
     WS Sg' ((as.map sort).reverse) (opT f) [] (sort b)
 

@@ -41,7 +41,8 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
   `MMT.STLC`, `MMT.Hom`, `MMT.LF.Checker`, …).
 * `autoImplicit` and `relaxedAutoImplicit` are off for the whole package.
 * Every module starts with a module docstring stating what it formalizes and its main
-  results; the main theorems carry docstrings.
+  results. Every public definition, structure field and constructor has a docstring,
+  enforced by `linter.missingDocs` (warnings fail CI).
 * Computational facts are checked by `decide`, in the kernel, never by `native_decide`.
 * The library builds without warnings; CI (`.github/workflows/mmtlib.yml`) builds with
   `--wfail` and runs `lake test`, whose axiom audit (`MMTlibExamples.Axioms`) fails if a

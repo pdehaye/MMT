@@ -9,9 +9,12 @@ testDriver = "MMTlibExamples"
 autoImplicit = false
 relaxedAutoImplicit = false
 pp.unicode.fun = true
+linter.missingDocs = true
 
 [[lean_lib]]
 name = "MMTlib"
 
 [[lean_lib]]
 name = "MMTlibExamples"
+# Examples are documentation in their own right; individual docstrings are optional.
+leanOptions = { linter.missingDocs = false }

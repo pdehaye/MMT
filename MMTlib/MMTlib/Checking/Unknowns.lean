@@ -34,7 +34,9 @@ def isUnknown (c : GName) : Bool := c.thy == unknownThy
 
 /-- A solution: closed images, identity on everything but unknowns. -/
 structure Solution (θ : Subst) : Prop where
+  /-- Solutions are closed terms. -/
   closed : θ.Closed
+  /-- Solutions are the identity on all constants but unknowns. -/
   fix : ∀ c, isUnknown c = false → θ c = .const c
 
 theorem Solution.id : Solution Subst.id := ⟨Subst.Closed.id, fun _ _ => rfl⟩
@@ -301,8 +303,11 @@ solution is checked against its (instantiated) type. -/
 
 /-- A solved unknown `?name : tp := sol`. -/
 structure Solved where
+  /-- The local name of the unknown. -/
   name : LName
+  /-- Its declared type. -/
   tp : Term
+  /-- Its solution, used as a definiens. -/
   sol : Term
 
 /-- Look up a solved unknown. -/

@@ -246,6 +246,7 @@ theorem avoids_sound : ∀ {D : ThyName} {t : Term}, avoids D t = true →
     simp only [avoids, Bool.and_eq_true] at h
     exact ⟨avoids_sound h.1.1, avoids_sound h.1.2, avoids_sound h.2⟩
 
+/-- A Boolean condition on an optional term; `true` for `none`. -/
 def optAll (p : Term → Bool) : Option Term → Bool
   | some t => p t
   | none => true

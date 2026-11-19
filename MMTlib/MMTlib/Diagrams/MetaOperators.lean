@@ -33,13 +33,16 @@ namespace MMT
 
 /-- A diagram of module names with an optional meta-diagram. -/
 inductive NDiagram where
+  /-- A list of module names with an optional meta-diagram. -/
   | mk (modules : List ThyName) (mt : Option NDiagram)
 
 namespace NDiagram
 
+/-- The modules of a diagram. -/
 def modules : NDiagram → List ThyName
   | mk ms _ => ms
 
+/-- The meta-diagram of a diagram, if any. -/
 def metaD : NDiagram → Option NDiagram
   | mk _ m => m
 
@@ -181,7 +184,9 @@ def MetaSub (L : Library) (M : NDiagram) (T : ThyName) : Prop :=
 /-- The closure of a list of modules with respect to a meta-diagram: everything reachable
 by includes and structures, stopping at modules of the meta-diagram. -/
 inductive InClosure (L : Library) (D : List ThyName) (M : NDiagram) : ThyName → Prop where
+  /-- A starting module outside the meta-diagram. -/
   | base {T} : T ∈ D → ¬ MetaSub L M T → InClosure L D M T
+  /-- A dependency of a module in the closure, outside the meta-diagram. -/
   | step {S R} : InClosure L D M S → R ∈ refs L S → ¬ MetaSub L M R → InClosure L D M R
 
 /-- **Dependency closure**: every dependency of a module in the closure is in the closure

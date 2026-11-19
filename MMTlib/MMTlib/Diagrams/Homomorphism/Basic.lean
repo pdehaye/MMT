@@ -47,16 +47,26 @@ theorem r2 {S p q j} (h : LF.Rule [p, q] j) (hp : D S p) (hq : D S q) : D S j :=
 
 /-! ## The logic meta-theory -/
 
+/-- The name of the logic meta-theory. -/
 def sfol : ThyName := "SFOL"
+/-- `prop : type`: propositions. -/
 def propN : GName := ⟨sfol, "prop"⟩
+/-- `ded : prop → type`: proofs of a proposition. -/
 def dedN  : GName := ⟨sfol, "ded"⟩
+/-- `eq : Π a:type. a → a → prop`: equality. -/
 def eqN   : GName := ⟨sfol, "eq"⟩
+/-- `refl`: reflexivity of equality. -/
 def reflN  : GName := ⟨sfol, "refl"⟩
+/-- `trans`: transitivity of equality. -/
 def transN : GName := ⟨sfol, "trans"⟩
+/-- `cong`: congruence of equality for application. -/
 def congN  : GName := ⟨sfol, "cong"⟩
 
+/-- The type of propositions. -/
 abbrev prop : Term := .const propN
+/-- `ded p`: the type of proofs of `p`. -/
 def ded (p : Term) : Term := .app (.const dedN) p
+/-- `eqT a x y`: the proposition `x = y` at type `a`. -/
 def eqT (a x y : Term) : Term := .app (.app (.app (.const eqN) a) x) y
 
 /-- `refl : Π a:type. Π x:a. ded (x = x)` -/
@@ -145,7 +155,9 @@ theorem apps_trans (σ : Subst) (f : Term) (l : List Term) :
 
 /-- Typed argument lists. -/
 inductive Args (S : Sig) (Γ : Ctx) : List Term → List Term → Prop where
+  /-- The empty argument list. -/
   | nil : Args S Γ [] []
+  /-- A typed argument followed by typed arguments. -/
   | cons {x A xs As} : D S (.typing Γ x A) → Args S Γ xs As → Args S Γ (x :: xs) (A :: As)
 
 theorem arrows_typed {S : Sig} {Γ : Ctx} {as : List Term} {b : Term}
@@ -172,12 +184,19 @@ theorem apps_typed {S : Sig} {Γ : Ctx} {f b : Term} {args as : List Term}
 
 /-- A first-order signature: sorts and operations with their profiles. -/
 structure FOSig where
+  /-- The name of the theory. -/
   thy : ThyName
+  /-- Which names are sorts. -/
   isSort : String → Bool
+  /-- Operations, with argument sorts and result sort. -/
   op? : String → Option (List String × String)
+  /-- Sorts are not operations. -/
   sort_not_op : ∀ n, isSort n = true → op? n = none
+  /-- Profiles only use sorts. -/
   op_sorts : ∀ f as b, op? f = some (as, b) → (∀ a ∈ as, isSort a = true) ∧ isSort b = true
+  /-- The theory is not the logic. -/
   thy_ne_sfol : thy ≠ sfol
+  /-- The theory is not LF. -/
   thy_ne_lf : thy ≠ LF.thy
 
 namespace FOSig
@@ -212,6 +231,7 @@ variable (H : ThyName)
 
 /-- The copy `n^k` of a symbol `n` of `Σ`, for `k ∈ {1, 2, h}`. -/
 def cp (k : String) (Sg : FOSig) (n : String) : GName := ⟨H, .sub k Sg.thy (.base n)⟩
+/-- The copy `n^k` as a term. -/
 def cs (k : String) (Sg : FOSig) (n : String) : Term := .const (cp H k Sg n)
 
 /-- The variables `x₁ … xₙ` inside `n` binders. -/
@@ -431,19 +451,24 @@ end WF
 
 /-- A morphism of first-order signatures: a map of names preserving sorts and profiles. -/
 structure FOMor (Sg Sg' : FOSig) where
+  /-- The map of sort and operation names. -/
   φ : String → String
+  /-- Sorts are mapped to sorts. -/
   sort : ∀ n, Sg.isSort n = true → Sg'.isSort (φ n) = true
+  /-- Operations are mapped to operations of the mapped profile. -/
   op : ∀ f p, Sg.op? f = some p → Sg'.op? (φ f) = some (p.1.map φ, φ p.2)
 
 namespace FOMor
 
 variable {Sg Sg' Sg'' : FOSig}
 
+/-- The identity signature morphism. -/
 def id (Sg : FOSig) : FOMor Sg Sg where
   φ n := n
   sort _ h := h
   op f p h := by simp [h]
 
+/-- Composition of signature morphisms. -/
 def comp (μ : FOMor Sg Sg') (ν : FOMor Sg' Sg'') : FOMor Sg Sg'' where
   φ n := ν.φ (μ.φ n)
   sort n h := ν.sort _ (μ.sort n h)

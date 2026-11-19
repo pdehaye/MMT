@@ -29,9 +29,13 @@ open LF Term Judgment
 
 /-- Predicate symbols over a first-order signature, with their argument sorts. -/
 structure Preds (Sg : FOSig) where
+  /-- Predicates by name, with their argument sorts. -/
   pred? : String → Option (List String)
+  /-- Predicate names are not sorts. -/
   not_sort : ∀ n as, pred? n = some as → Sg.isSort n = false
+  /-- Predicate names are not operations. -/
   not_op : ∀ n as, pred? n = some as → Sg.op? n = none
+  /-- Argument sorts are sorts. -/
   sorts : ∀ n as, pred? n = some as → ∀ a ∈ as, Sg.isSort a = true
 
 variable (H : ThyName)
@@ -238,6 +242,7 @@ end WF
 
 /-- A signature morphism that also maps predicates to predicates of the same profile. -/
 structure FOMorP {Sg Sg' : FOSig} (P : Preds Sg) (P' : Preds Sg') extends FOMor Sg Sg' where
+  /-- Predicates are mapped to predicates of the mapped profile. -/
   pred : ∀ n as, P.pred? n = some as → P'.pred? (φ n) = some (as.map φ)
 
 namespace FOMorP

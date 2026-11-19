@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Docstrings for every public declaration, enforced by `linter.missingDocs`.
+
 * The homomorphism functor for signatures with predicates
   (`MMTlib.Diagrams.Homomorphism.Predicates`): preservation axioms
   `p^h : Π x⃗. ded (p¹ x⃗) → ded (p² (h x⃗))`, well-formedness, and functoriality for
