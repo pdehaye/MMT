@@ -31,6 +31,7 @@ classical logic.
 | `Homomorphism.lean` | The homomorphism functor on first-order signatures over a logic `SFOL`: the theory `Hom(Σ)` of homomorphisms between two models, its well-formedness, its action on signature morphisms, and the projections | diagram operators (homomorphism functor) |
 | `HomView.lean` | The homomorphism functor on views that send operations to compound terms: proof terms built by induction on the term, multi-step β-reduction, and conversion to the translated axiom | diagram operators (homomorphism functor) |
 | `ViewChecker.lean` | Executable checkers for theories (declaration by declaration) and views over a library: computable visibility and flattening (sound), a decidable completeness certificate for the visible theories, and soundness of both checks | `api/checking/MMTStructureChecker.scala` (view checking) |
+| `CheckerComplete.lean` | Completeness of the checker for syntax-directed LF typing | `api/checking/Solver.scala` |
 | `Unknowns.lean` | Unknowns as in MMT's Solver: solutions as morphisms, transport of derivations, first-order unification, and solving followed by checking | `api/checking/Solver.scala` (unknowns, solutions) |
 | `Checker.lean` | An executable type checker for LF (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer, hence is sound by construction | `api/checking/{Solver,Rules}.scala`, `mmt-lf` rules |
 | `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, `Bimagma` with two structures `add, mul : Magma`, and runs of the checker. Each is checked and used to transport a typing derivation | — |
@@ -189,6 +190,10 @@ classical logic.
     and by type reconstruction without user-given constraints.
 * Checker:
   * `LF.Checker.check_sound`, `eq_sound`: whatever the checker accepts is derivable;
+  * `LF.Checker.infer_complete`, `check_complete`: the checker is complete for
+    syntax-directed typing (`Alg`: variables, constants, universes, Π, λ and application,
+    with argument types matching exactly). With enough fuel it infers exactly the
+    derived type and accepts;
   * `Example.check_conv`, `check_beta`, `reject_op_x`: runs of the checker, evaluated
     by `decide` in the kernel. They cover conversion via a definition, β-equality,
     and the rejection of an ill-typed term.
@@ -251,11 +256,12 @@ classical logic.
   define base constants without definiens.
 * The checker is a model of the Solver's architecture, not a verification of the Scala
   code. It is sound by construction, since every answer carries its derivation. It
-  works with fuel and gives no completeness guarantee.
+  works with fuel; it is complete for syntax-directed typing (`CheckerComplete.lean`).
 * Not yet covered:
   * the homomorphism functor on signatures beyond first-order ones (predicates,
     axioms, dependent types), and its functor laws up to proof irrelevance for
     compound-term views;
   * the Solver's delayed constraints and higher-order pattern unification (unknowns,
     solutions, first-order unification and type reconstruction are covered);
-  * completeness of the checker.
+  * completeness of the checker beyond syntax-directed typing (with conversion), which
+    would need normalization and confluence of β-reduction.
