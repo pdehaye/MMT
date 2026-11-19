@@ -26,6 +26,7 @@ classical logic.
 | `Diagrams.lean` | Diagrams; linear functors given by systematic renaming, with functor laws; connectors and naturality; sequencing, union, and connecting a diagram to its image | `api/modules/diagrams/{Diagram,LinearFunctor,LinearConnector,MetaOperators}.scala`, `SystematicRenamer` |
 | `PushoutFunctor.lean` | The pushout functor along a meta-theory morphism `m : M → M'`: theories, morphisms, connectors, functor laws | `api/modules/diagrams/PushoutOperator.scala` (`PushoutFunctor`, `PushoutConnector`) |
 | `Homomorphism.lean` | The homomorphism functor on first-order signatures over a logic `SFOL`: the theory `Hom(Σ)` of homomorphisms between two models, its well-formedness, its action on signature morphisms, and the projections | diagram operators (homomorphism functor) |
+| `HomView.lean` | The homomorphism functor on views that send operations to compound terms: proof terms built by induction on the term, multi-step β-reduction, and conversion to the translated axiom | diagram operators (homomorphism functor) |
 | `Checker.lean` | An executable type checker for LF (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer, hence is sound by construction | `api/checking/{Solver,Rules}.scala`, `mmt-lf` rules |
 | `Example.lean` | Worked examples over LF: the view `Magma → NatArith`, `Bimagma` with two structures `add, mul : Magma`, and runs of the checker. Each is checked and used to transport a typing derivation | — |
 
@@ -97,6 +98,19 @@ classical logic.
   * `Hom.proj_isMorphism`, `proj_naturality`: the projections `Σ → Hom(Σ)`, `c ↦ cᵏ`,
     are natural morphisms;
   * `Example.hom_op_typed`: the instance for magmas.
+* Homomorphism functor on views with compound terms (`HomView.lean`):
+  * `Hom.proofP_typed`: for a first-order term `t : b`, the proof term `P(t)` has type
+    `ded (h_b (t¹) = t²[h x⃗])`. It is built from the axioms `g^h` and the logic's
+    `refl`, `trans` and `cong`;
+  * `Hom.multiBeta`, `Hom.beta1`, `Hom.betaH`: `(λx⃗. tᵏ) u⃗` β-reduces to `tᵏ[u⃗]` for
+    variable-like arguments `u⃗`;
+  * `Hom.proofP_converted`: `P(t)` also has the translated axiom type, which contains
+    the β-redexes;
+  * `Hom.FOView.hom_isMorphism`: for a view `φ` that sends each operation `f` to a
+    term `λx⃗. t`, `Hom(φ) : Hom(Σ) → Hom(Σ')` is a well-typed morphism. It sends
+    `f^h` to `λx⃗. P(t)`;
+  * `Example.hom_plusZeroView`: the view `Magma → Nat`,
+    `op ↦ λx y. plus x (plus y zero)`.
 * Checker:
   * `LF.Checker.check_sound`, `eq_sound`: whatever the checker accepts is derivable;
   * `Example.check_conv`, `check_beta`, `reject_op_x`: runs of the checker, evaluated
@@ -139,15 +153,25 @@ classical logic.
 * The homomorphism functor is defined for first-order signatures (sorts and
   operations) over a logic meta-theory with `prop`, `ded` and polymorphic `eq`. Its
   action on morphisms covers signature morphisms, which send sorts to sorts and
-  operations to operations with matching profiles. A view that sends an operation to
-  a compound term would need `Hom(φ)` to send `f^h` to a *proof*, built by induction
-  on that term from congruence rules of the logic. This is not covered.
+  operations to operations with matching profiles. `HomView.lean` extends this to
+  views that send operations to compound first-order terms. There, `f^h` is sent to a
+  proof built by induction on the term, which needs `refl`, `trans` and `cong` in the
+  logic.
+* Our LF has no substitution lemma for derivations. `HomView.lean` works around this
+  by keeping every intermediate term the encoding of a first-order term under a
+  valuation by variable-like atoms, and proving its typing directly.
+* For compound-term views the functor laws hold only up to equality of proofs: for
+  example, `Hom(φ;ψ)(f^h)` and `(Hom φ;Hom ψ)(f^h)` are different proof terms of the
+  same type. Proving them equal would need proof irrelevance in the logic.
 * The checker is a model of the Solver's architecture, not a verification of the Scala
   code. It is sound by construction, since every answer carries its derivation. It
   works with fuel and gives no completeness guarantee.
 * Not yet covered:
-  * the homomorphism functor applied to views that send operations to compound terms,
-    and to signatures beyond first-order ones (predicates, axioms, dependent types);
+  * the homomorphism functor on signatures beyond first-order ones (predicates,
+    axioms, dependent types), and its functor laws up to proof irrelevance for
+    compound-term views;
+  * a substitution lemma for LF derivations (typing is preserved under substitution
+    and inner weakening);
   * the meta-operators that select or rearrange theories (zipping, closure,
     difference, rebase);
   * the Solver's handling of unknowns: solving implicit arguments, delaying

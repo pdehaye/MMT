@@ -50,27 +50,46 @@ def sfol : ThyName := "SFOL"
 def propN : GName := ⟨sfol, "prop"⟩
 def dedN  : GName := ⟨sfol, "ded"⟩
 def eqN   : GName := ⟨sfol, "eq"⟩
+def reflN  : GName := ⟨sfol, "refl"⟩
+def transN : GName := ⟨sfol, "trans"⟩
+def congN  : GName := ⟨sfol, "cong"⟩
 
 abbrev prop : Term := .const propN
 def ded (p : Term) : Term := .app (.const dedN) p
 def eqT (a x y : Term) : Term := .app (.app (.app (.const eqN) a) x) y
 
-/-- `prop : type`, `ded : prop → type`, `eq : Π a:type. a → a → prop`. -/
+/-- `refl : Π a:type. Π x:a. ded (x = x)` -/
+def reflT : Term := Pi type (Pi (.var 0) (ded (eqT (.var 1) (.var 0) (.var 0))))
+
+/-- `trans : Π a:type. Π x y z:a. ded (x = y) → ded (y = z) → ded (x = z)` -/
+def transT : Term :=
+  Pi type (Pi (.var 0) (Pi (.var 1) (Pi (.var 2)
+    (Pi (ded (eqT (.var 3) (.var 2) (.var 1)))
+      (Pi (ded (eqT (.var 4) (.var 2) (.var 1)))
+        (ded (eqT (.var 5) (.var 4) (.var 2))))))))
+
+/-- `cong : Π a b:type. Π f g:a→b. Π x y:a. ded (f = g) → ded (x = y) → ded (f x = g y)` -/
+def congT : Term :=
+  Pi type (Pi type (Pi (Pi (.var 1) (.var 1)) (Pi (Pi (.var 2) (.var 2)) (Pi (.var 3) (Pi (.var 4)
+    (Pi (ded (eqT (Pi (.var 5) (.var 5)) (.var 3) (.var 2)))
+      (Pi (ded (eqT (.var 6) (.var 2) (.var 1)))
+        (ded (eqT (.var 6) (.app (.var 5) (.var 3)) (.app (.var 4) (.var 2)))))))))))
+
+/-- The logic: `prop : type`, `ded : prop → type`, `eq : Π a:type. a → a → prop`, and the
+equality rules `refl`, `trans`, `cong`. -/
 def metaSig : Sig := fun c =>
   if c = propN then some ⟨some type, none⟩
   else if c = dedN then some ⟨some (Pi prop type), none⟩
   else if c = eqN then some ⟨some (Pi type (Pi (.var 0) (Pi (.var 1) prop))), none⟩
+  else if c = reflN then some ⟨some reflT, none⟩
+  else if c = transN then some ⟨some transT, none⟩
+  else if c = congN then some ⟨some congT, none⟩
   else none
 
 theorem metaSig_thy {c : GName} {i : ConstInfo} (h : metaSig c = some i) : c.thy = sfol := by
   unfold metaSig at h
-  split at h
-  · subst_vars; rfl
-  · split at h
-    · subst_vars; rfl
-    · split at h
-      · subst_vars; rfl
-      · cases h
+  repeat' split at h
+  all_goals first | (subst_vars; rfl) | cases h
 
 theorem metaSig_df {c : GName} {i : ConstInfo} (h : metaSig c = some i) : i.df = none := by
   unfold metaSig at h
@@ -81,17 +100,14 @@ theorem metaSig_df {c : GName} {i : ConstInfo} (h : metaSig c = some i) : i.df =
 theorem metaSig_fixed {c : GName} {A : Term} {d : Option Term}
     (h : metaSig c = some ⟨some A, d⟩) {σ : Subst}
     (hσ : ∀ c', c'.thy = sfol ∨ c'.thy = LF.thy → σ c' = .const c') : A.trans σ = A := by
-  have hT : σ typeN = type := hσ _ (.inr rfl)
-  have hP : σ piN = .const piN := hσ _ (.inr rfl)
-  have hp : σ propN = prop := hσ _ (.inl rfl)
-  unfold metaSig at h
-  split at h
-  · cases h; simp [Term.trans, hT]
-  · split at h
-    · cases h; simp [Term.trans, hT, hP, hp]
-    · split at h
-      · cases h; simp [Term.trans, hT, hP, hp]
-      · cases h
+  have hu : A.UsesOnly (fun c' => c'.thy = sfol ∨ c'.thy = LF.thy) := by
+    unfold metaSig at h
+    repeat' split at h
+    all_goals first
+      | (cases h; simp [Term.UsesOnly, reflT, transT, congT, ded, eqT, propN, dedN, eqN,
+          typeN, piN, sfol, LF.thy])
+      | cases h
+  rw [Term.trans_congr hu (τ := Subst.id) (fun c' h' => hσ c' h'), Term.trans_id]
 
 /-! ## Term builders -/
 
