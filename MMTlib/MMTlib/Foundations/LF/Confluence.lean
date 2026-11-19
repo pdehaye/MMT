@@ -367,4 +367,38 @@ theorem Conv.normal_eq {t u : Term} (h : Conv t u) (nt : Normal t) (nu : Normal 
   rw [htw.eq_of_normal nt] at huw
   exact huw.eq_of_normal nu
 
+/-! ## Morphisms preserve computation -/
+
+section Translation
+
+variable {σ : Subst} (hσ : σ.Closed) (hl : σ lamN = .const lamN)
+include hσ hl
+
+/-- A morphism that fixes `λ` maps reduction steps to reduction steps. (It may create
+new redexes, by mapping a constant to a λ-abstraction, but never destroys one.) -/
+theorem Step.trans {t u : Term} (h : Step t u) : Step (t.trans σ) (u.trans σ) := by
+  induction h with
+  | beta A t a =>
+    rw [Term.trans_inst hσ]
+    have := Step.beta (A.trans σ) (t.trans σ) (a.trans σ)
+    simpa [Term.trans, hl] using this
+  | appL a _ ih => exact .appL _ ih
+  | appR f _ ih => exact .appR _ ih
+  | bindB A t _ ih => exact .bindB _ _ ih
+  | bindA b t _ ih => exact .bindA _ _ ih
+  | bindT b A _ ih => exact .bindT _ _ ih
+
+/-- A morphism that fixes `λ` preserves multi-step reduction. -/
+theorem Red.trans {t u : Term} (h : Red t u) : Red (t.trans σ) (u.trans σ) :=
+  Star.map (Term.trans σ) (Step.trans hσ hl) h
+
+/-- A morphism that fixes `λ` preserves β-conversion. -/
+theorem Conv.trans_mor {t u : Term} (h : Conv t u) : Conv (t.trans σ) (u.trans σ) := by
+  induction h with
+  | refl => exact .refl _
+  | fwd _ hs ih => exact .fwd ih (Step.trans hσ hl hs)
+  | bwd _ hs ih => exact .bwd ih (Step.trans hσ hl hs)
+
+end Translation
+
 end MMT.LF

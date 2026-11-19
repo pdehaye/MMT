@@ -78,6 +78,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlib.Diagrams.Homomorphism.Views` | The homomorphism functor on views that send operations to compound terms | diagram operators (homomorphism functor) |
 | **Checking** | | |
 | `MMTlib.Checking.TypeChecker` | An executable LF type checker (inference, checking with conversion, equality via δ, β and congruence) that returns a derivation with each answer | `api/checking/{Solver,Rules}.scala` |
+| `MMTlib.Checking.BetaConversion` | Executable normal-order β-normalizer; conversion check that is correct in both directions, by confluence | `api/checking/Solver.scala` (equality check) |
 | `MMTlib.Checking.Completeness` | Completeness of the checker for syntax-directed typing | `api/checking/Solver.scala` |
 | `MMTlib.Checking.Unknowns` | Unknowns: solutions as morphisms, unification, solved unknowns as definitions, type reconstruction | `api/checking/Solver.scala` |
 | `MMTlib.Checking.ModuleChecker` | Executable theory and view checkers over a library; computable visibility and flattening | `api/checking/MMTStructureChecker.scala` |
@@ -87,7 +88,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlibExamples.ModuleChecker` | Runs of the theory and view checkers | — |
 | `MMTlibExamples.Homomorphism` | `Hom(Magma)`; `Hom` of a compound-term view | — |
 | `MMTlibExamples.Unknowns` | Implicit arguments | — |
-| `MMTlibExamples.Reduction` | β-reduction of the K combinator; its unique normal form | — |
+| `MMTlibExamples.Reduction` | β-reduction of the K combinator; its unique normal form; conversion checks by `decide` | — |
 | `MMTlibExamples.STLC` | An STLC derivation read in LF | — |
 | `MMTlibExamples.Axioms` | Axiom audit of the main theorems (`#guard_msgs`) | — |
 
@@ -116,7 +117,10 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 * `LF.Red.confluent` (**Church–Rosser**): β-reduction is confluent, by the
   Tait–Martin-Löf method with Takahashi's complete development (`LF.Par.triangle`,
   `LF.Par.diamond`). Consequences: `LF.Red.normal_unique` (normal forms are unique) and
-  `LF.Conv.joinable` (β-convertible terms have a common reduct).
+  `LF.Conv.joinable` (β-convertible terms have a common reduct). `LF.Red.trans`:
+  morphisms that fix `λ` preserve reduction and conversion.
+* `LF.conv?_correct`: the executable conversion check, comparing normal forms, is
+  sound and complete whenever both terms normalize within the fuel.
 * `STLC.foundation`: the simply typed λ-calculus is a second foundation, so all
   generic results apply to it.
 * `FMor.preserves`: a *foundation morphism* translates terms so that every source rule

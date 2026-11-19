@@ -93,3 +93,9 @@ if this changes.
 
 /-- info: 'MMT.LF.Conv.joinable' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms MMT.LF.Conv.joinable
+
+/-- info: 'MMT.LF.conv?_correct' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms MMT.LF.conv?_correct
+
+/-- info: 'MMT.LF.Red.trans' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms MMT.LF.Red.trans

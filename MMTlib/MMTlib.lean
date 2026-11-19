@@ -19,6 +19,7 @@ import MMTlib.Diagrams.Homomorphism.Views
 import MMTlib.Diagrams.Homomorphism.Predicates
 import MMTlib.Diagrams.Homomorphism.Axioms
 import MMTlib.Checking.TypeChecker
+import MMTlib.Checking.BetaConversion
 import MMTlib.Checking.Completeness
 import MMTlib.Checking.Unknowns
 import MMTlib.Checking.ModuleChecker

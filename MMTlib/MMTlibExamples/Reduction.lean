@@ -41,4 +41,19 @@ example : ¬ Conv (cst "a") (cst "b") := fun h => by
   have := Conv.normal_eq h (const_normal _) (const_normal _)
   simp [cst] at this
 
+/-! ### The executable conversion check, evaluated in the kernel -/
+
+/-- `K a b` and `a` are convertible: decided by comparing normal forms. -/
+example : Conv (.app (.app (kComb (cst "A")) (cst "a")) (cst "b")) (cst "a") :=
+  conv?_true (fuel := 5) (by decide)
+
+/-- `K a b` and `K b a` are not convertible. -/
+example : ¬ Conv (.app (.app (kComb (cst "A")) (cst "a")) (cst "b"))
+    (.app (.app (kComb (cst "A")) (cst "b")) (cst "a")) :=
+  conv?_false (fuel := 5) (by decide)
+
+/-- `λx. K x x` is in normal form only after reduction. -/
+example : ¬ Normal (lam (cst "A") (.app (.app (kComb (cst "A")) (.var 0)) (.var 0))) := by
+  decide
+
 end MMT.Example
