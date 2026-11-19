@@ -134,7 +134,13 @@ classical logic.
     `op ↦ λx y. plus x (plus y zero)`.
 * Theory checker:
   * `checkTheory_sound`: if the executable theory checker accepts a theory, every
-    declaration is well-formed over the theory up to that declaration (`TheoryWF`);
+    declaration is well-formed over the theory up to that declaration (`TheoryWF`).
+    For a constant, its type is a type or kind and its definiens has that type. For a
+    structure (`StructOK`), the induced morphism is well-typed and every assignment
+    has the translated type;
+  * `checkStruct_sound`: the decidable check for structure declarations;
+  * `Example.bimagma_checks`, `magmaN_checks`, `magmaBad_rejected`: structures are
+    checked; an ill-typed assignment `op := N` is rejected;
   * `Example.magma_checks`, `natArith_checks`, `bad_rejected`: `Magma` and `NatArith`
     are checked by `decide`; a theory that uses a constant before declaring it is
     rejected.
@@ -222,8 +228,9 @@ classical logic.
 * The view checker allows structures in the codomain, but the theories visible from the
   domain must declare none. It checks that the theories visible from the domain are
   visible from the codomain, and that their declarations do not mention the domain.
-  Other views are rejected. The theory checker does not check structure declarations
-  themselves; `structMor_isMorphism` gives the conditions for that.
+  Other views are rejected. The structure check requires the theories shared between
+  the structure's domain and the host to declare no structures, and assignments to
+  define base constants without definiens.
 * The checker is a model of the Solver's architecture, not a verification of the Scala
   code. It is sound by construction, since every answer carries its derivation. It
   works with fuel and gives no completeness guarantee.

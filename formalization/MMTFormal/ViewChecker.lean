@@ -390,10 +390,128 @@ def DeclOK (S : Sig) : Decl → Prop
     ∀ e, df = some e → Derivable LF.foundation S (.typing [] e A)
   | _ => True
 
+/-- A structure declaration `structure s : Sdom = as` in `H` (in a library that already
+contains it) is well-formed if its induced morphism is well-typed and every assignment
+has the translated type of the constant it defines. -/
+def StructOK (L : Library) (H : ThyName) (s : String) (Sdom : ThyName)
+    (as : List (GName × Term)) : Prop :=
+  IsMorphism LF.foundation (flat L Sdom) (flat L H) (structMor L H s) ∧
+  ∀ c t, (c, t) ∈ as → ∀ A, flat L Sdom c = some ⟨some A, none⟩ →
+    Derivable LF.foundation (flat L H) (.typing [] t (A.trans (structMor L H s)))
+
+/-- Well-formedness of the `k`-th declaration of `T`, whose body is `ds`. -/
+def DeclOKAt (L : Library) (T : ThyName) (ds : List Decl) (k : Nat) : Decl → Prop
+  | .struct s Sdom as => StructOK (setDecls L T (ds.take (k + 1))) T s Sdom as
+  | d => DeclOK (flat (setDecls L T (ds.take k)) T) d
+
 /-- A theory is well-formed if each declaration is well-formed over the theory up to it. -/
 def TheoryWF (L : Library) (T : ThyName) : Prop :=
-  ∀ th, L T = some th → ∀ k d, th.decls[k]? = some d →
-    DeclOK (flat (setDecls L T (th.decls.take k)) T) d
+  ∀ th, L T = some th → ∀ k d, th.decls[k]? = some d → DeclOKAt L T th.decls k d
+
+/-- All constants of `t` are visible from `R`. -/
+def usesVis (L : Library) (k : Nat) (R : ThyName) : Term → Bool
+  | .var _ => true
+  | .const c => visDec L k R c.thy
+  | .app f a => usesVis L k R f && usesVis L k R a
+  | .bind b A t => usesVis L k R b && usesVis L k R A && usesVis L k R t
+
+theorem usesVis_sound {L : Library} {k : Nat} {R : ThyName} : ∀ {t : Term},
+    usesVis L k R t = true → t.UsesOnly fun d => Visible L R d.thy
+  | .var _, _ => trivial
+  | .const c, h => visDec_sound h
+  | .app f a, h => by
+    simp only [usesVis, Bool.and_eq_true] at h
+    exact ⟨usesVis_sound h.1, usesVis_sound h.2⟩
+  | .bind b A t, h => by
+    simp only [usesVis, Bool.and_eq_true] at h
+    exact ⟨usesVis_sound h.1.1, usesVis_sound h.1.2, usesVis_sound h.2⟩
+
+/-- Check a structure declaration. -/
+def checkStruct (L : Library) (k : Nat) (H : ThyName) (s : String) (Sdom : ThyName)
+    (as : List (GName × Term)) : Bool :=
+  (L H).bind (·.structLookup s) == some (Sdom, as) &&
+  closedUnderEdges L (reach L k H) && closedUnderEdges L (reach L k Sdom) &&
+  visDec L k H LF.thy &&
+  (reach L k Sdom).all (fun R => !visDec L k H R ||
+    match L R with
+    | some th => noStructs th && th.decls.all fun
+        | .const _ tp df => optAll (usesVis L k R) tp && optAll (usesVis L k R) df
+        | _ => true
+    | none => true) &&
+  as.all fun p => match p.1.name with
+    | .base n =>
+      match (L p.1.thy).bind (·.localLookup n) with
+      | some ⟨some A, none⟩ =>
+        LF.Checker.typeCheck (flatB L k H) [] p.2 (A.trans (structMorB L k H s))
+      | some ⟨_, some _⟩ => false
+      | _ => true
+    | _ => false
+
+theorem checkStruct_sound {L : Library} {k : Nat} {H : ThyName} {s : String} {Sdom : ThyName}
+    {as : List (GName × Term)} (h : checkStruct L k H s Sdom as = true) :
+    StructOK L H s Sdom as := by
+  simp only [checkStruct, Bool.and_eq_true, beq_iff_eq, List.all_eq_true] at h
+  obtain ⟨⟨⟨⟨⟨hs, hcH⟩, hcS⟩, hLF⟩, hsh⟩, has⟩ := h
+  have hdom := self_mem_reach L k Sdom
+  have visH : ∀ R, Visible L H R → visDec L k H R = true := fun R h => (visDec_iff hcH).mpr h
+  have memS : ∀ R, Visible L Sdom R → R ∈ reach L k Sdom :=
+    fun R h => visible_mem_of_closed (closedUnderEdges_sound hcS) hdom h
+  -- each assignment defines a base constant without definiens
+  have hasg : ∀ c t, (c, t) ∈ as → ∀ i, flat L Sdom c = some i →
+      ∃ A, i = ⟨some A, none⟩ ∧ LF.Checker.typeCheck (flatB L k H) [] t
+        (A.trans (structMorB L k H s)) = true ∨ i.tp = none ∧ i.df = none := by
+    intro c t hmem i hfl
+    obtain ⟨-, hhi⟩ := flat_eq_some.mp hfl
+    have := has _ hmem
+    simp only at this
+    obtain ⟨T, nm⟩ := c
+    cases nm with
+    | sub => simp at this
+    | base n =>
+      simp only [homeInfo] at hhi
+      simp only at this
+      rw [hhi] at this
+      obtain ⟨tp, df⟩ := i
+      cases df with
+      | some e => simp at this
+      | none =>
+        cases tp with
+        | none => exact ⟨LF.type, .inr ⟨rfl, rfl⟩⟩
+        | some A => exact ⟨A, .inl ⟨rfl, this⟩⟩
+  refine ⟨structMor_isMorphism hs ?_ ?_ ?_, ?_⟩
+  · intro c hc
+    simp only [LF.foundation] at hc
+    rw [hc]; exact visDec_sound hLF
+  · intro c i hfl hvH
+    obtain ⟨hv, hhi⟩ := flat_eq_some.mp hfl
+    have := hsh c.thy (memS _ hv)
+    rw [visH _ hvH] at this
+    simp only [Bool.not_true, Bool.false_or] at this
+    cases hth : L c.thy with
+    | none => rw [homeInfo_none hth] at hhi; cases hhi
+    | some th =>
+      rw [hth] at this
+      simp only [Bool.and_eq_true, List.all_eq_true] at this
+      obtain ⟨hns, hdecls⟩ := this
+      obtain ⟨m, -, hll⟩ := homeInfo_base_of_noStructs hth hns hhi
+      have := hdecls _ (localLookup_mem hll)
+      simp only [Bool.and_eq_true] at this
+      obtain ⟨htp, hdf⟩ := this
+      refine ⟨fun A hA => ?_, fun e he => ?_⟩
+      · rw [hA] at htp; exact usesVis_sound htp
+      · rw [he] at hdf; exact usesVis_sound hdf
+  · intro c t hl i hfl
+    rcases hasg c t (List.lookup_mem hl) i hfl with ⟨A, ⟨rfl, _⟩ | ⟨_, h⟩⟩
+    · rfl
+    · exact h
+  · intro c t hmem A hfl
+    rcases hasg c t hmem _ hfl with ⟨A', ⟨he, hty⟩ | ⟨h, _⟩⟩
+    · simp only [ConstInfo.mk.injEq, Option.some.injEq, and_true] at he
+      subst he
+      rw [← structMorB_eq hcH]
+      exact (LF.Checker.check_sound hty).mono (flatB_sub L k H)
+    · cases h
+
 
 /-- Check one declaration over a signature. -/
 def checkDecl (S : Sig) : Decl → Bool
@@ -402,12 +520,17 @@ def checkDecl (S : Sig) : Decl → Bool
     optAll (fun e => LF.Checker.typeCheck S [] e A) df
   | _ => true
 
+/-- Check one declaration of `T`, whose body is `ds`, at position `i`. -/
+def checkDeclAt (L : Library) (k : Nat) (T : ThyName) (ds : List Decl) (i : Nat) : Decl → Bool
+  | .struct s Sdom as => checkStruct (setDecls L T (ds.take (i + 1))) k T s Sdom as
+  | d => checkDecl (flatB (setDecls L T (ds.take i)) k T) d
+
 /-- **The theory checker**, as MMT checks a theory declaration by declaration. -/
 def checkTheory (L : Library) (k : Nat) (T : ThyName) : Bool :=
   match L T with
   | some th => (List.range th.decls.length).all fun i =>
       match th.decls[i]? with
-      | some d => checkDecl (flatB (setDecls L T (th.decls.take i)) k T) d
+      | some d => checkDeclAt L k T th.decls i d
       | none => true
   | none => true
 
@@ -442,7 +565,11 @@ theorem checkTheory_sound {L : Library} {k : Nat} {T : ThyName} (h : checkTheory
     · rw [List.getElem?_eq_none h'] at hd; cases hd
   have := h i hi
   rw [hd] at this
-  exact checkDecl_sound (flatB_sub _ k T) this
+  cases d with
+  | struct s Sdom as => exact checkStruct_sound (by simpa [checkDeclAt] using this)
+  | const n tp df =>
+    exact checkDecl_sound (flatB_sub _ k T) (by simpa [checkDeclAt] using this)
+  | incl S => trivial
 
 /-- Well-typed declarations are closed: a consequence of scoping. -/
 theorem DeclOK.closed {S : Sig}

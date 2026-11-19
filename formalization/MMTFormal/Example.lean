@@ -410,4 +410,27 @@ def libExt : Library := fun
 
 theorem bimagmaExt_checks : checkTheory libExt 4 "Bimagma" = true := by decide
 
+/-- `Bimagma`, including its two structure declarations, is well-formed. -/
+theorem bimagma_checks : checkTheory lib 4 "Bimagma" = true := by decide
+
+/-- A structure with an assignment: `structure m : Magma = {U := N}` in a theory with `N : type`. -/
+def nN : Term := .const ⟨"MagmaN", "N"⟩
+
+def magmaN : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "N" (some type) none, .struct "m" "Magma" [(gU, nN)]] }
+
+/-- The same structure, but assigning `op := N`, which is ill-typed. -/
+def magmaBad : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "N" (some type) none, .struct "m" "Magma" [(gOp, nN)]] }
+
+def libN (th : Theory) : Library := fun
+  | "MagmaN" => some th
+  | T => lib T
+
+theorem magmaN_checks : checkTheory (libN magmaN) 4 "MagmaN" = true := by decide
+
+theorem magmaBad_rejected : checkTheory (libN magmaBad) 4 "MagmaN" = false := by decide
+
 end MMT.Example
