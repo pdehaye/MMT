@@ -81,6 +81,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlib.Checking.BetaConversion` | Executable normal-order β-normalizer; conversion check that is correct in both directions, by confluence | `api/checking/Solver.scala` (equality check) |
 | `MMTlib.Checking.Completeness` | Completeness of the checker for syntax-directed typing | `api/checking/Solver.scala` |
 | `MMTlib.Checking.Unknowns` | Unknowns: solutions as morphisms, unification, solved unknowns as definitions, type reconstruction | `api/checking/Solver.scala` |
+| `MMTlib.Checking.DelayedConstraints` | Delayed constraints: unification up to β by normalization, passes that delay unsolvable constraints, solving then checking | `api/checking/Solver.scala` (delayed constraints) |
 | `MMTlib.Checking.PatternUnification` | Higher-order pattern unification `?X x⃗ ≐ t`, sound up to β; solving then checking | `api/checking/Solver.scala` (`solveVariable`) |
 | `MMTlib.Checking.ModuleChecker` | Executable theory and view checkers over a library; computable visibility and flattening | `api/checking/MMTStructureChecker.scala` |
 | **Examples** | | |
@@ -90,6 +91,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlibExamples.Homomorphism` | `Hom(Magma)`; `Hom` of a compound-term view | — |
 | `MMTlibExamples.Unknowns` | Implicit arguments | — |
 | `MMTlibExamples.PatternUnification` | Solving `?F x ≐ succ x` by `?F := λx. succ x` | — |
+| `MMTlibExamples.DelayedConstraints` | `?F ?A ≐ c` delayed until `?F` is solved | — |
 | `MMTlibExamples.Reduction` | β-reduction of the K combinator; its unique normal form; conversion checks by `decide` | — |
 | `MMTlibExamples.STLC` | An STLC derivation read in LF | — |
 | `MMTlibExamples.Axioms` | Axiom audit of the main theorems (`#guard_msgs`) | — |
@@ -209,6 +211,9 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
   * `patSol_red`, `solveCheckP_sound`: higher-order pattern unification. The solution
     `?X := λy⃗. t[y⃗/x⃗]` satisfies `?X x⃗ ≐ t` up to β; after solving, the instance is
     checked by the sound checker.
+  * `solveDelayed_sound`, `solveCheckD_sound`: delayed constraints. Constraints that
+    cannot be solved yet are retried after the others. Constraints solved early stay
+    solved, because solutions preserve β-conversion.
 * Computable flattening: `visDec_iff`, `flatB_sub`, `flatB_eq`. Visibility is decidable
   under a decidable completeness certificate. The computable flattening, including
   structure copies, is sound, and exact under the certificates.
@@ -243,7 +248,8 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 * Unknowns: the implicit argument of `id ?A c : N`, solved by unification
   (`idApp_solved`), as a solved definition (`idApp_checkSolved`), and by
   reconstruction (`idApp_reconstructed`). A higher-order pattern `?F x ≐ succ x`
-  (`MMTlibExamples.PatternUnification`).
+  (`MMTlibExamples.PatternUnification`). A constraint `?F ?A ≐ c` that must be delayed
+  (`MMTlibExamples.DelayedConstraints`).
 
 ## Modelling choices and scope
 
@@ -296,7 +302,8 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
   connectives), for dependent types, and for compound-term views of signatures with
   predicates or axioms. Its functor laws for compound-term views, which hold only up to
   proof irrelevance.
-* The Solver's delayed constraints, and most-generality of pattern unification.
+* Most-generality of pattern unification, and the Solver's other strategies (type-directed
+  rules, η, unknowns in contexts).
 * Completeness of the checker with conversion. Confluence of β-reduction is proved;
   normalization of well-typed terms and subject reduction are not.
 

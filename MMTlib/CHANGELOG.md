@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Delayed constraints (`MMTlib.Checking.DelayedConstraints`): unification up to β by
+  normalization, solving passes that delay constraints until they become solvable.
 * Higher-order pattern unification (`MMTlib.Checking.PatternUnification`): solutions
   `?X := λy⃗. t[y⃗/x⃗]`, sound up to β-reduction; constraints solved up to β, then the
   instance is checked.
