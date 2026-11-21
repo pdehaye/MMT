@@ -201,6 +201,166 @@ def hookToRH : View :=
                (.base "eq", k "RHFock" "eq"), (.base "N", k "RHFock" "fockNormHw"),
                (.base "H", k "RHFock" "hookProd"), (.base "fact", k "RHFock" "hookNorm")] }
 
+/-! ## Modular part: a shared logic, statements, implementations, connectors
+
+The theories below include a common `Logic`, which every view keeps fixed (MMT's shared
+includes). Each mathematical claim has a *statement theory* with views into the theories where it
+is established; a link between two developments is a *connector theory* that includes both and
+declares the bridging lemma. -/
+
+/-- Propositions as types, shared by all modular theories. -/
+def logic : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "prop" (some type) none,
+              .const "ded" (some (arrow (k "Logic" "prop") type)) none,
+              .const "iff" (some (arrow (k "Logic" "prop") (arrow (k "Logic" "prop") (k "Logic" "prop")))) none,
+              .const "and" (some (arrow (k "Logic" "prop") (arrow (k "Logic" "prop") (k "Logic" "prop")))) none] }
+
+/-- `ded (iff p q)` over the shared logic. -/
+def dedIff (p q : Term) : Term := ap (k "Logic" "ded") (ap2 (k "Logic" "iff") p q)
+
+/-- Statement: **Lemma 6** of Dehaye (complementary in the square ⟺ shifted sequences
+partition `{0, …, 2k−1}`), with Macdonald's identity (I.1.7) as its input. -/
+def complementarity : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "Shape" (some type) none,
+              .const "complementary" (some (arrow (k "Complementarity" "Shape") (arrow (k "Complementarity" "Shape") (k "Logic" "prop")))) none,
+              .const "shiftedPartition" (some (arrow (k "Complementarity" "Shape") (arrow (k "Complementarity" "Shape") (k "Logic" "prop")))) none,
+              .const "rowsAndColumnsPartition" (some (arrow (k "Complementarity" "Shape") (k "Logic" "prop"))) none,
+              .const "macdonald" (some (Pi (k "Complementarity" "Shape")
+                (ap (k "Logic" "ded") (ap (k "Complementarity" "rowsAndColumnsPartition") (.var 0))))) none,
+              .const "lemma6" (some (Pi (k "Complementarity" "Shape") (Pi (k "Complementarity" "Shape")
+                (dedIff (ap2 (k "Complementarity" "complementary") (.var 1) (.var 0))
+                        (ap2 (k "Complementarity" "shiftedPartition") (.var 1) (.var 0)))))) none] }
+
+/-- Implementation: `RMTlib.Tableaux.Complement` (`RMT.Complementary`, `RMT.ShiftedPartition`,
+`RMT.macdonald_1_7`, `RMT.lemma6`; proved, standard axioms). -/
+def rmtComplement : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "BoxPartition" (some type) none,
+              .const "Complementary" (some (arrow (k "RMTlibComplement" "BoxPartition") (arrow (k "RMTlibComplement" "BoxPartition") (k "Logic" "prop")))) none,
+              .const "ShiftedPartition" (some (arrow (k "RMTlibComplement" "BoxPartition") (arrow (k "RMTlibComplement" "BoxPartition") (k "Logic" "prop")))) none,
+              .const "Macdonald17" (some (arrow (k "RMTlibComplement" "BoxPartition") (k "Logic" "prop"))) none,
+              .const "macdonald_1_7" (some (Pi (k "RMTlibComplement" "BoxPartition")
+                (ap (k "Logic" "ded") (ap (k "RMTlibComplement" "Macdonald17") (.var 0))))) none,
+              .const "lemma6" (some (Pi (k "RMTlibComplement" "BoxPartition") (Pi (k "RMTlibComplement" "BoxPartition")
+                (dedIff (ap2 (k "RMTlibComplement" "Complementary") (.var 1) (.var 0))
+                        (ap2 (k "RMTlibComplement" "ShiftedPartition") (.var 1) (.var 0)))))) none] }
+
+/-- `Complementarity → RMTlibComplement`: the claim is proved in RMTlib. -/
+def complementarityToRMT : View :=
+  { dom := "Complementarity", cod := "RMTlibComplement",
+    assign := [(.base "Shape", k "RMTlibComplement" "BoxPartition"),
+               (.base "complementary", k "RMTlibComplement" "Complementary"),
+               (.base "shiftedPartition", k "RMTlibComplement" "ShiftedPartition"),
+               (.base "rowsAndColumnsPartition", k "RMTlibComplement" "Macdonald17"),
+               (.base "macdonald", k "RMTlibComplement" "macdonald_1_7"),
+               (.base "lemma6", k "RMTlibComplement" "lemma6")] }
+
+/-- Statement: the index set of a basis of `∇(ν)`, and the reading-word characterization by RSK. -/
+def weylIndex : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "Mat" (some type) none,
+              .const "interlaced" (some (arrow (k "WeylIndex" "Mat") (k "Logic" "prop"))) none,
+              .const "recordingFixed" (some (arrow (k "WeylIndex" "Mat") (k "Logic" "prop"))) none,
+              .const "readingWord" (some (Pi (k "WeylIndex" "Mat")
+                (dedIff (ap (k "WeylIndex" "interlaced") (.var 0)) (ap (k "WeylIndex" "recordingFixed") (.var 0))))) none] }
+
+/-- Implementation side 1: `RMTlib.Tableaux.Interlaced` and `RMTlibTargets.readingWord`
+(checked on small cases; `sorry` in general). -/
+def rmtWeyl : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "FunMat" (some type) none,
+              .const "Interlaced" (some (arrow (k "RMTlibWeyl" "FunMat") (k "Logic" "prop"))) none,
+              .const "RecordingIsQnu" (some (arrow (k "RMTlibWeyl" "FunMat") (k "Logic" "prop"))) none,
+              .const "readingWord" (some (Pi (k "RMTlibWeyl" "FunMat")
+                (dedIff (ap (k "RMTlibWeyl" "Interlaced") (.var 0)) (ap (k "RMTlibWeyl" "RecordingIsQnu") (.var 0))))) none] }
+
+/-- Implementation side 2: the RH formalisation, `Formalism.GradedWeylDivisibility`
+(`Interlaced`, `ssIdx`, `SSBasis`; on `Finsupp`s). -/
+def rhWeyl : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "FinsuppMat" (some type) none,
+              .const "Interlaced" (some (arrow (k "RHWeylBasis" "FinsuppMat") (k "Logic" "prop"))) none,
+              .const "leadingMonomialOfBasis" (some (arrow (k "RHWeylBasis" "FinsuppMat") (k "Logic" "prop"))) none,
+              .const "sSBasis" (some (Pi (k "RHWeylBasis" "FinsuppMat")
+                (dedIff (ap (k "RHWeylBasis" "Interlaced") (.var 0)) (ap (k "RHWeylBasis" "leadingMonomialOfBasis") (.var 0))))) none] }
+
+/-- Connector: `bridge/RMTlibBridge/WeylBasis.lean`. It includes both sides, coerces
+`Finsupp`s to functions, and states `RMT.Bridge.interlaced_iff` (proved). -/
+def weylBridge : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic", .incl "RMTlibWeyl", .incl "RHWeylBasis",
+              .const "coe" (some (arrow (k "RHWeylBasis" "FinsuppMat") (k "RMTlibWeyl" "FunMat"))) none,
+              .const "interlaced_iff" (some (Pi (k "RHWeylBasis" "FinsuppMat")
+                (dedIff (ap (k "RHWeylBasis" "Interlaced") (.var 0))
+                        (ap (k "RMTlibWeyl" "Interlaced") (ap (k "WeylBridge" "coe") (.var 0)))))) none] }
+
+/-- `WeylIndex → RMTlibWeyl`: the statement is RMTlib's `ReadingWord` (sorried target). -/
+def weylIndexToRMT : View :=
+  { dom := "WeylIndex", cod := "RMTlibWeyl",
+    assign := [(.base "Mat", k "RMTlibWeyl" "FunMat"), (.base "interlaced", k "RMTlibWeyl" "Interlaced"),
+               (.base "recordingFixed", k "RMTlibWeyl" "RecordingIsQnu"),
+               (.base "readingWord", k "RMTlibWeyl" "readingWord")] }
+
+/-- `WeylIndex → RHWeylBasis`: rejected. The RH formalisation characterizes `ssIdx` by leading
+monomials of its basis, not by RSK; the reading word has no counterpart there, and the connector
+`WeylBridge` is how the two meet. -/
+def weylIndexToRH : View :=
+  { dom := "WeylIndex", cod := "RHWeylBasis",
+    assign := [(.base "Mat", k "RHWeylBasis" "FinsuppMat"), (.base "interlaced", k "RHWeylBasis" "Interlaced")] }
+
+/-- Statement: a Hermitian lattice with a metric at infinity, and its slope (Arakelov). -/
+def arakelovLattice : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "Lattice" (some type) none,
+              .const "Real" (some type) none,
+              .const "logIndexAtPrimes" (some (arrow (k "ArakelovLattice" "Lattice") (k "ArakelovLattice" "Real"))) none,
+              .const "logCovolumeAtInfinity" (some (arrow (k "ArakelovLattice" "Lattice") (k "ArakelovLattice" "Real"))) none,
+              .const "slope" (some (arrow (k "ArakelovLattice" "Lattice") (k "ArakelovLattice" "Real"))) none] }
+
+/-- The RH formalisation's instance: the Weyl module over `ℤ` with the Fock metric
+(`PI.MuStd`, `PI.stdGram`, `WeylRational`). -/
+def rhArakelov : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "WeylModuleZ" (some type) none,
+              .const "R" (some type) none,
+              .const "weylIndex" (some (arrow (k "RHArakelov" "WeylModuleZ") (k "RHArakelov" "R"))) none,
+              .const "logDetStdGram" (some (arrow (k "RHArakelov" "WeylModuleZ") (k "RHArakelov" "R"))) none,
+              .const "muStd" (some (arrow (k "RHArakelov" "WeylModuleZ") (k "RHArakelov" "R"))) none] }
+
+/-- The moment recipe's instance, as an analogy: "lattice" = the local data, the finite-place
+part = `Σ_p log A_p`, the archimedean part = the conductor term. -/
+def idelicMoments : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "LocalData" (some type) none,
+              .const "R" (some type) none,
+              .const "sumOverPrimesLogA" (some (arrow (k "IdelicMoments" "LocalData") (k "IdelicMoments" "R"))) none,
+              .const "conductorTerm" (some (arrow (k "IdelicMoments" "LocalData") (k "IdelicMoments" "R"))) none,
+              .const "logArithFactor" (some (arrow (k "IdelicMoments" "LocalData") (k "IdelicMoments" "R"))) none] }
+
+def arakelovToRH : View :=
+  { dom := "ArakelovLattice", cod := "RHArakelov",
+    assign := [(.base "Lattice", k "RHArakelov" "WeylModuleZ"), (.base "Real", k "RHArakelov" "R"),
+               (.base "logIndexAtPrimes", k "RHArakelov" "weylIndex"),
+               (.base "logCovolumeAtInfinity", k "RHArakelov" "logDetStdGram"),
+               (.base "slope", k "RHArakelov" "muStd")] }
+
+def arakelovToMoments : View :=
+  { dom := "ArakelovLattice", cod := "IdelicMoments",
+    assign := [(.base "Lattice", k "IdelicMoments" "LocalData"), (.base "Real", k "IdelicMoments" "R"),
+               (.base "logIndexAtPrimes", k "IdelicMoments" "sumOverPrimesLogA"),
+               (.base "logCovolumeAtInfinity", k "IdelicMoments" "conductorTerm"),
+               (.base "slope", k "IdelicMoments" "logArithFactor")] }
+
 /-! ## The library and the checks -/
 
 /-- The theory graph. -/
@@ -214,11 +374,23 @@ def lib : Library := fun
   | "Kruskal" => some kruskal
   | "HookFact" => some hookFact
   | "RHFock" => some rhFock
+  | "Logic" => some logic
+  | "Complementarity" => some complementarity
+  | "RMTlibComplement" => some rmtComplement
+  | "WeylIndex" => some weylIndex
+  | "RMTlibWeyl" => some rmtWeyl
+  | "RHWeylBasis" => some rhWeyl
+  | "WeylBridge" => some weylBridge
+  | "ArakelovLattice" => some arakelovLattice
+  | "RHArakelov" => some rhArakelov
+  | "IdelicMoments" => some idelicMoments
   | _ => none
 
 /-- All theories are well-formed. -/
 theorem theories_check :
-    ["Recipe", "UNModel", "ZetaModel", "NullLattice", "GrowthRSK", "Kruskal", "HookFact", "RHFock"].all
+    ["Recipe", "UNModel", "ZetaModel", "NullLattice", "GrowthRSK", "Kruskal", "HookFact", "RHFock",
+     "Logic", "Complementarity", "RMTlibComplement", "WeylIndex", "RMTlibWeyl", "RHWeylBasis",
+     "WeylBridge", "ArakelovLattice", "RHArakelov", "IdelicMoments"].all
       (checkTheory lib 4) = true := by decide
 
 /-- The legs of the spans are well-typed views. -/
@@ -227,6 +399,10 @@ theorem recipeToZeta_checks : checkView lib 4 recipeToZeta = true := by decide
 theorem nullToGrowth_checks : checkView lib 4 nullToGrowth = true := by decide
 theorem nullToKruskal_checks : checkView lib 4 nullToKruskal = true := by decide
 theorem hookToRH_checks : checkView lib 4 hookToRH = true := by decide
+theorem complementarityToRMT_checks : checkView lib 4 complementarityToRMT = true := by decide
+theorem weylIndexToRMT_checks : checkView lib 4 weylIndexToRMT = true := by decide
+theorem arakelovToRH_checks : checkView lib 4 arakelovToRH = true := by decide
+theorem arakelovToMoments_checks : checkView lib 4 arakelovToMoments = true := by decide
 
 theorem recipeToUN_wellTyped : recipeToUN.WellTyped LF.foundation lib := checkView_sound recipeToUN_checks
 theorem hookToRH_wellTyped : hookToRH.WellTyped LF.foundation lib := checkView_sound hookToRH_checks
@@ -234,6 +410,7 @@ theorem hookToRH_wellTyped : hookToRH.WellTyped LF.foundation lib := checkView_s
 /-- The direct analogies are rejected as total views. -/
 theorem zetaToUN_rejected : checkView lib 4 zetaToUN = false := by decide
 theorem kruskalToGrowth_rejected : checkView lib 4 kruskalToGrowth = false := by decide
+theorem weylIndexToRH_rejected : checkView lib 4 weylIndexToRH = false := by decide
 
 /-- The local constants of the domain of `v` that `v` leaves unassigned. -/
 def unassigned (L : Library) (v : View) : List String :=
@@ -249,6 +426,10 @@ theorem zetaToUN_gap : unassigned lib zetaToUN = ["arithFactor", "cutoffFree", "
 
 /-- **What does not transfer from Hawking's setting to growth diagrams.** -/
 theorem kruskalToGrowth_gap : unassigned lib kruskalToGrowth = ["Coord", "kappa", "kruskalMap"] := by
+  decide
+
+/-- **What the RH formalisation does not have**: the RSK characterization of its index set. -/
+theorem weylIndexToRH_gap : unassigned lib weylIndexToRH = ["recordingFixed", "readingWord"] := by
   decide
 
 /-! ## The edge table -/
@@ -294,14 +475,23 @@ def edges : List Edge :=
    ⟨"RMTlib ksConst", "RH fockQ (det^k)", none, .proved, "RMTlib bridge: RMT.Bridge.ksConst_mul_fockQ_sq"⟩,
    ⟨"RMTlib growth RSK", "RH ssIdx (basis of ∇(ν))", none, .checked,
      "RMTlib RMTlibExamples/Interlaced.lean (#guard); RMTlibTargets.readingWord (sorry)"⟩,
-   ⟨"Dehaye Thm 3", "exclusion at |κ|+|λ| = 2k", none, .proved, "RMTlib RMTlibTargets/Exclusion.lean"⟩,
-   ⟨"Dehaye Lemma 6", "shifted sequences", none, .checked, "RMTlib RMTlibTargets/Lemma6.lean (k ≤ 4; sorry)"⟩,
+   ⟨"Dehaye Thm 3", "exclusion at |κ|+|λ| = 2k", none, .proved, "RMTlib RMTlib/Tableaux/Exclusion.lean"⟩,
+   ⟨"Complementarity", "RMTlibComplement", some complementarityToRMT, .proved,
+     "RMTlib RMTlib/Tableaux/Complement.lean (RMT.macdonald_1_7, RMT.lemma6)"⟩,
+   ⟨"WeylIndex", "RMTlibWeyl", some weylIndexToRMT, .sorried,
+     "RMTlib RMTlibTargets/Statements.lean (readingWord); #guard in RMTlibExamples/Interlaced.lean"⟩,
+   ⟨"WeylIndex", "RHWeylBasis", some weylIndexToRH, .rejected, "this file: weylIndexToRH_gap"⟩,
+   ⟨"WeylBridge (connector)", "RMTlibWeyl + RHWeylBasis", none, .proved,
+     "RMTlib bridge/RMTlibBridge/WeylBasis.lean (RMT.Bridge.interlaced_iff, basis_of_recording)"⟩,
+   ⟨"ArakelovLattice", "RHArakelov", some arakelovToRH, .analogy,
+     "RH Formalism/PeriodIntegrals/HookBound.lean (PI.MuStd); vocabulary match, not a theorem"⟩,
+   ⟨"ArakelovLattice", "IdelicMoments", some arakelovToMoments, .analogy,
+     "RMTlib scripts/places.py (Σ_p log A_p); the idelic reading is an analogy"⟩,
    ⟨"Recipe at p", "RH cSL (Gindikin–Karpelevich)", none, .analogy,
      "cSL(p, p^{-u}) = ζ_p(u)/ζ_p(1+u); RH Divisors₂/GindikinKarpelevich.lean (FormulaGL: stated)"⟩,
    ⟨"d_κλ (Schur basis)", "RH MacdonaldWhittaker (Casselman–Shalika)", none, .analogy,
      "RH GroundTheory/AutomorphicForms/MacdonaldWhittaker.lean"⟩,
    ⟨"e^{x p₁} at ∞", "1/‖hw_λ‖²_Fock", none, .sorried, "planned: RMTlib bridge (needs Pieri)"⟩,
-   ⟨"RH PI.MuStd (Arakelov slope)", "idelic log f̃", none, .analogy, "discussion; no file"⟩,
    ⟨"Varrin SL(2,ℝ) Plancherel", "archimedean c-function", none, .analogy, "arXiv:2610.37750; no file"⟩]
 
 /-- Every link that is a view and claimed proved, checked or an analogy passes the checker;
