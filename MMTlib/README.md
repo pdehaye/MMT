@@ -99,6 +99,7 @@ and `import MMTlib` (or individual modules such as `import MMTlib.Modules.Basic`
 | `MMTlibExamples.Reduction` | β-reduction of the K combinator; its unique normal form; conversion checks by `decide` | — |
 | `MMTlibExamples.STLC` | An STLC derivation read in LF | — |
 | `MMTlibExamples.Axioms` | Axiom audit of the main theorems (`#guard_msgs`) | — |
+| `MMTlibExamples.Atlas` | A research programme (moment recipe, RH formalisation, RSK, analogue gravity) as a theory graph: spans of checked views, partial views whose gaps are computed, and an edge table with a status for every link | — |
 
 ## Main results
 

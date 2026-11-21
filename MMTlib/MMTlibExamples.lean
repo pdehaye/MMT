@@ -8,6 +8,7 @@ import MMTlibExamples.DelayedConstraints
 import MMTlibExamples.ModuleChecker
 import MMTlibExamples.STLC
 import MMTlibExamples.Axioms
+import MMTlibExamples.Atlas
 
 /-!
 # MMTlib examples
