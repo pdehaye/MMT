@@ -1,0 +1,315 @@
+import MMTlib.Foundations.LF.Basic
+import MMTlib.Modules.Basic
+import MMTlib.Modules.PartialView
+import MMTlib.Checking.ModuleChecker
+
+/-!
+# An atlas of a research programme as an MMT theory graph
+
+The programme relates several bodies of mathematics: Dehaye's combinatorial form of the
+CFKRS moment recipe (arXiv:1201.4478, Theorem 3), its U(N) and ζ instances, the claimed RH
+formalisation `pdehaye/riemann-hypothesis-lean` (Fock norms, hook products, the basis of the
+dual Weyl module), the Lean library `pdehaye/RMTlib` (growth-diagram RSK, bridges), and an
+analogy with Hawking radiation in null coordinates. Moving between them is exactly what views
+are for, so this file records the programme as a theory graph and lets the verified checkers
+of `MMTlib.Checking.ModuleChecker` certify the links.
+
+## The pattern: spans, as in analogue gravity
+
+Analogue gravity relates a model (sound in a moving fluid) and a target (a black hole) through
+a shared *kinematic* theory (null coordinates, a horizon), not through a direct dictionary.
+Here the same shape appears three times:
+
+```
+            Recipe                    NullLattice                 HookFact
+           /      \                  /           \                    \
+       UNModel   ZetaModel      GrowthRSK      Kruskal               RHFock
+```
+
+* The legs of each span are **total views, checked by `checkView` and `decide`**.
+* The direct link between the two models is a **partial view**: `checkView` rejects it as a
+  total view, and `unassigned` lists exactly the constants with no counterpart. Those lists are
+  the formal content of "what does not transfer": ζ's arithmetic factor and its cutoff-free
+  prime sum have no U(N) counterpart; the exponential map of Kruskal coordinates has no
+  counterpart in growth diagrams.
+
+The theories are vocabulary-level LF signatures (propositions as types: `ded : prop → type`).
+They do not contain the mathematics, which lives in Lean libraries and scripts; the table
+`edges` at the end records, for every link, its status (proved / checked / sorried /
+analogy / rejected) and the file that justifies it.
+-/
+
+namespace MMT.Atlas
+
+open LF
+
+/-- A constant of theory `T`. -/
+def k (T n : String) : Term := .const ⟨T, n⟩
+
+/-- `f a`, `f a b`. -/
+def ap (f a : Term) : Term := .app f a
+def ap2 (f a b : Term) : Term := .app (.app f a) b
+
+/-- The LF meta-theory. -/
+def lfThy : Theory :=
+  { metaThy := none,
+    decls := [.const "type" none none, .const "kind" none none,
+              .const "Pi" none none, .const "lambda" none none] }
+
+/-! ## Span 1: the moment recipe and its instances -/
+
+/-- The declarations of Theorem 3 (Dehaye), over a theory named `T`: shapes, coefficients,
+local data, skew dimensions `dim`, the complement `S_k` (`comp`), the arithmetic weights
+`d_κλ` (`weight`), and the formula `c_M = 1/(k²−M)! Σ d_κλ dim(λ, S_k(κ))` (`thm3`). -/
+def recipeDecls (T : String) : List Decl :=
+  [.const "Shape" (some type) none,
+   .const "Num" (some type) none,
+   .const "Local" (some type) none,
+   .const "prop" (some type) none,
+   .const "ded" (some (arrow (k T "prop") type)) none,
+   .const "dim" (some (arrow (k T "Shape") (arrow (k T "Shape") (k T "Num")))) none,
+   .const "comp" (some (arrow (k T "Shape") (k T "Shape"))) none,
+   .const "weight" (some (arrow (k T "Local") (arrow (k T "Shape") (arrow (k T "Shape") (k T "Num"))))) none,
+   .const "formula" (some (arrow (k T "Local") (k T "prop"))) none,
+   .const "thm3" (some (Pi (k T "Local") (ap (k T "ded") (ap (k T "formula") (.var 0))))) none]
+
+/-- The interface: Theorem 3 with the local data abstract. -/
+def recipe : Theory := { metaThy := some "LF", decls := recipeDecls "Recipe" }
+
+/-- U(N): one place, kernel `1/(1−e^{−u})` (Bernoulli numbers), conductor `N`. -/
+def unModel : Theory :=
+  { metaThy := some "LF",
+    decls := recipeDecls "UNModel" ++
+      [.const "bernoulli" (some (k "UNModel" "Local")) none,
+       .const "conductorN" (some (k "UNModel" "Num")) none] }
+
+/-- ζ: the product over primes, conductor `log(t/2π)`, the arithmetic factor `a_k`, and the
+cutoff-free evaluation of `Σ_p log A_p` (analytic continuation in the scaling of `1/p`). -/
+def zetaModel : Theory :=
+  { metaThy := some "LF",
+    decls := recipeDecls "ZetaModel" ++
+      [.const "primes" (some (k "ZetaModel" "Local")) none,
+       .const "conductorLogT" (some (k "ZetaModel" "Num")) none,
+       .const "arithFactor" (some (k "ZetaModel" "Num")) none,
+       .const "cutoffFree" (some (k "ZetaModel" "prop")) none,
+       .const "cutoffFreeThm" (some (ap (k "ZetaModel" "ded") (k "ZetaModel" "cutoffFree"))) none] }
+
+/-- The assignments of the recipe vocabulary of `S` to that of `T` (same local names). -/
+def recipeAssign (T : String) : List (LName × Term) :=
+  ["Shape", "Num", "Local", "prop", "ded", "dim", "comp", "weight", "formula", "thm3"].map
+    fun n => (.base n, k T n)
+
+/-- `Recipe → UNModel`: Theorem 3 holds for U(N) (checked: `scripts/un_test.py`, k ≤ 3). -/
+def recipeToUN : View := { dom := "Recipe", cod := "UNModel", assign := recipeAssign "UNModel" }
+
+/-- `Recipe → ZetaModel`: Theorem 3 for ζ (the paper; numerics in `scripts/places.py`). -/
+def recipeToZeta : View := { dom := "Recipe", cod := "ZetaModel", assign := recipeAssign "ZetaModel" }
+
+/-- The direct analogy `ZetaModel ⇢ UNModel`: primes ↦ the single place, `log(t/2π) ↦ N`.
+The arithmetic factor and the cutoff-free prime sum are left unassigned. -/
+def zetaToUN : View :=
+  { dom := "ZetaModel", cod := "UNModel",
+    assign := recipeAssign "UNModel" ++
+      [(.base "primes", k "UNModel" "bernoulli"), (.base "conductorLogT", k "UNModel" "conductorN")] }
+
+/-! ## Span 2: null lattices -/
+
+/-- A characteristic (Goursat) problem on a null lattice: a value at each corner of a unit
+diamond is computed from the past corner, the two side corners and a source. -/
+def nullLattice : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "Val" (some type) none,
+              .const "Src" (some type) none,
+              .const "rule" (some (arrow (k "NullLattice" "Val") (arrow (k "NullLattice" "Val")
+                (arrow (k "NullLattice" "Val") (arrow (k "NullLattice" "Src") (k "NullLattice" "Val")))))) none] }
+
+/-- Fomin's growth diagrams (`RMT.Growth.localRule`): shapes on a grid, the permutation as source. -/
+def growthRSK : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "Shape" (some type) none,
+              .const "Bit" (some type) none,
+              .const "localRule" (some (arrow (k "GrowthRSK" "Shape") (arrow (k "GrowthRSK" "Shape")
+                (arrow (k "GrowthRSK" "Shape") (arrow (k "GrowthRSK" "Bit") (k "GrowthRSK" "Shape")))))) none,
+              .const "Tableau" (some type) none,
+              .const "Perm" (some type) none,
+              .const "rsk" (some (arrow (k "GrowthRSK" "Perm") (k "GrowthRSK" "Tableau"))) none] }
+
+/-- A massless field in Kruskal null coordinates: the discretized wave equation is a null-lattice
+rule; the exponential map `U = −e^{−κu}` to asymptotic coordinates produces the redshift. -/
+def kruskal : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "Field" (some type) none,
+              .const "Source" (some type) none,
+              .const "waveRule" (some (arrow (k "Kruskal" "Field") (arrow (k "Kruskal" "Field")
+                (arrow (k "Kruskal" "Field") (arrow (k "Kruskal" "Source") (k "Kruskal" "Field")))))) none,
+              .const "Coord" (some type) none,
+              .const "kappa" (some type) none,
+              .const "kruskalMap" (some (arrow (k "Kruskal" "kappa") (arrow (k "Kruskal" "Coord") (k "Kruskal" "Coord")))) none] }
+
+/-- Growth diagrams are a null-lattice scheme (by definition of `RMT.Growth.row`). -/
+def nullToGrowth : View :=
+  { dom := "NullLattice", cod := "GrowthRSK",
+    assign := [(.base "Val", k "GrowthRSK" "Shape"), (.base "Src", k "GrowthRSK" "Bit"),
+               (.base "rule", k "GrowthRSK" "localRule")] }
+
+/-- The discretized wave equation in null coordinates is a null-lattice scheme. -/
+def nullToKruskal : View :=
+  { dom := "NullLattice", cod := "Kruskal",
+    assign := [(.base "Val", k "Kruskal" "Field"), (.base "Src", k "Kruskal" "Source"),
+               (.base "rule", k "Kruskal" "waveRule")] }
+
+/-- The direct analogy `Kruskal ⇢ GrowthRSK`: the local rule transfers; the exponential map
+and the surface gravity do not (the VKLS edge is a square-root soft edge, not a linear horizon). -/
+def kruskalToGrowth : View :=
+  { dom := "Kruskal", cod := "GrowthRSK",
+    assign := [(.base "Field", k "GrowthRSK" "Shape"), (.base "Source", k "GrowthRSK" "Bit"),
+               (.base "waveRule", k "GrowthRSK" "localRule")] }
+
+/-! ## Span 3: hook products and Fock norms -/
+
+/-- `N(λ) = H(λ)`: a norm equals the hook product of the shape. -/
+def hookFact : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "Shape" (some type) none, .const "Num" (some type) none,
+              .const "prop" (some type) none,
+              .const "ded" (some (arrow (k "HookFact" "prop") type)) none,
+              .const "eq" (some (arrow (k "HookFact" "Num") (arrow (k "HookFact" "Num") (k "HookFact" "prop")))) none,
+              .const "N" (some (arrow (k "HookFact" "Shape") (k "HookFact" "Num"))) none,
+              .const "H" (some (arrow (k "HookFact" "Shape") (k "HookFact" "Num"))) none,
+              .const "fact" (some (Pi (k "HookFact" "Shape")
+                (ap (k "HookFact" "ded") (ap2 (k "HookFact" "eq") (ap (k "HookFact" "N") (.var 0)) (ap (k "HookFact" "H") (.var 0)))))) none] }
+
+/-- The RH formalisation: `fockQ (hw ν) (hw ν) · ∏ (ν_i − ν_j + j − i) = ∏ (ν_i + N − 1 − i)!`
+(`PI.HookSteps.HookNorm`, proved), i.e. the Fock norm² of the highest-weight vector is the
+hook product. -/
+def rhFock : Theory :=
+  { metaThy := some "LF",
+    decls := [.const "Weight" (some type) none, .const "Rat" (some type) none,
+              .const "prop" (some type) none,
+              .const "ded" (some (arrow (k "RHFock" "prop") type)) none,
+              .const "eq" (some (arrow (k "RHFock" "Rat") (arrow (k "RHFock" "Rat") (k "RHFock" "prop")))) none,
+              .const "fockNormHw" (some (arrow (k "RHFock" "Weight") (k "RHFock" "Rat"))) none,
+              .const "hookProd" (some (arrow (k "RHFock" "Weight") (k "RHFock" "Rat"))) none,
+              .const "hookNorm" (some (Pi (k "RHFock" "Weight")
+                (ap (k "RHFock" "ded") (ap2 (k "RHFock" "eq") (ap (k "RHFock" "fockNormHw") (.var 0)) (ap (k "RHFock" "hookProd") (.var 0)))))) none] }
+
+/-- `HookFact → RHFock`: the norm is the Fock norm of the highest-weight vector. -/
+def hookToRH : View :=
+  { dom := "HookFact", cod := "RHFock",
+    assign := [(.base "Shape", k "RHFock" "Weight"), (.base "Num", k "RHFock" "Rat"),
+               (.base "prop", k "RHFock" "prop"), (.base "ded", k "RHFock" "ded"),
+               (.base "eq", k "RHFock" "eq"), (.base "N", k "RHFock" "fockNormHw"),
+               (.base "H", k "RHFock" "hookProd"), (.base "fact", k "RHFock" "hookNorm")] }
+
+/-! ## The library and the checks -/
+
+/-- The theory graph. -/
+def lib : Library := fun
+  | "LF" => some lfThy
+  | "Recipe" => some recipe
+  | "UNModel" => some unModel
+  | "ZetaModel" => some zetaModel
+  | "NullLattice" => some nullLattice
+  | "GrowthRSK" => some growthRSK
+  | "Kruskal" => some kruskal
+  | "HookFact" => some hookFact
+  | "RHFock" => some rhFock
+  | _ => none
+
+/-- All theories are well-formed. -/
+theorem theories_check :
+    ["Recipe", "UNModel", "ZetaModel", "NullLattice", "GrowthRSK", "Kruskal", "HookFact", "RHFock"].all
+      (checkTheory lib 4) = true := by decide
+
+/-- The legs of the spans are well-typed views. -/
+theorem recipeToUN_checks : checkView lib 4 recipeToUN = true := by decide
+theorem recipeToZeta_checks : checkView lib 4 recipeToZeta = true := by decide
+theorem nullToGrowth_checks : checkView lib 4 nullToGrowth = true := by decide
+theorem nullToKruskal_checks : checkView lib 4 nullToKruskal = true := by decide
+theorem hookToRH_checks : checkView lib 4 hookToRH = true := by decide
+
+theorem recipeToUN_wellTyped : recipeToUN.WellTyped LF.foundation lib := checkView_sound recipeToUN_checks
+theorem hookToRH_wellTyped : hookToRH.WellTyped LF.foundation lib := checkView_sound hookToRH_checks
+
+/-- The direct analogies are rejected as total views. -/
+theorem zetaToUN_rejected : checkView lib 4 zetaToUN = false := by decide
+theorem kruskalToGrowth_rejected : checkView lib 4 kruskalToGrowth = false := by decide
+
+/-- The local constants of the domain of `v` that `v` leaves unassigned. -/
+def unassigned (L : Library) (v : View) : List String :=
+  match L v.dom with
+  | some th => th.decls.filterMap fun
+      | .const n _ _ => if (v.assign.lookup (.base n)).isSome then none else some n
+      | _ => none
+  | none => []
+
+/-- **What does not transfer from ζ to U(N).** -/
+theorem zetaToUN_gap : unassigned lib zetaToUN = ["arithFactor", "cutoffFree", "cutoffFreeThm"] := by
+  decide
+
+/-- **What does not transfer from Hawking's setting to growth diagrams.** -/
+theorem kruskalToGrowth_gap : unassigned lib kruskalToGrowth = ["Coord", "kappa", "kruskalMap"] := by
+  decide
+
+/-! ## The edge table -/
+
+/-- How a link of the programme is justified. -/
+inductive Status
+  /-- A Lean proof with standard axioms only. -/
+  | proved
+  /-- Checked by computation (`#guard`, `decide` on instances, or a script), not proved. -/
+  | checked
+  /-- Stated in Lean with `sorry`. -/
+  | sorried
+  /-- A structural correspondence or analogy, not a theorem. -/
+  | analogy
+  /-- Rejected as a total view; the gap is computed by `unassigned`. -/
+  | rejected
+  deriving DecidableEq, Repr
+
+/-- A link: source, target, the MMT view if any, status, and where the evidence is. -/
+structure Edge where
+  /-- Source. -/
+  src : String
+  /-- Target. -/
+  tgt : String
+  /-- The view in this file, if the link is one. -/
+  view : Option View
+  /-- How it is justified. -/
+  status : Status
+  /-- Repository and file. -/
+  evidence : String
+
+/-- The programme's links. -/
+def edges : List Edge :=
+  [⟨"Recipe", "UNModel", some recipeToUN, .checked, "RMTlib scripts/un_test.py (k ≤ 3, exact)"⟩,
+   ⟨"Recipe", "ZetaModel", some recipeToZeta, .checked,
+     "RMTlib scripts/places.py, cutoff_free.py (k ≤ 3; Dehaye Thm 3 is a theorem about the recipe)"⟩,
+   ⟨"ZetaModel", "UNModel", some zetaToUN, .rejected, "this file: zetaToUN_gap"⟩,
+   ⟨"NullLattice", "GrowthRSK", some nullToGrowth, .proved, "RMTlib RMTlib/Growth/RSK.lean (row, localRule)"⟩,
+   ⟨"NullLattice", "Kruskal", some nullToKruskal, .analogy, "discretized wave equation in null coordinates"⟩,
+   ⟨"Kruskal", "GrowthRSK", some kruskalToGrowth, .rejected, "this file: kruskalToGrowth_gap"⟩,
+   ⟨"HookFact", "RHFock", some hookToRH, .proved,
+     "riemann-hypothesis-lean PI.HookSteps.HookNorm; RMTlib bridge/RMTlibBridge/FockNorm.lean"⟩,
+   ⟨"RMTlib ksConst", "RH fockQ (det^k)", none, .proved, "RMTlib bridge: RMT.Bridge.ksConst_mul_fockQ_sq"⟩,
+   ⟨"RMTlib growth RSK", "RH ssIdx (basis of ∇(ν))", none, .checked,
+     "RMTlib RMTlibExamples/Interlaced.lean (#guard); RMTlibTargets.readingWord (sorry)"⟩,
+   ⟨"Dehaye Thm 3", "exclusion at |κ|+|λ| = 2k", none, .proved, "RMTlib RMTlibTargets/Exclusion.lean"⟩,
+   ⟨"Dehaye Lemma 6", "shifted sequences", none, .checked, "RMTlib RMTlibTargets/Lemma6.lean (k ≤ 4; sorry)"⟩,
+   ⟨"Recipe at p", "RH cSL (Gindikin–Karpelevich)", none, .analogy,
+     "cSL(p, p^{-u}) = ζ_p(u)/ζ_p(1+u); RH Divisors₂/GindikinKarpelevich.lean (FormulaGL: stated)"⟩,
+   ⟨"d_κλ (Schur basis)", "RH MacdonaldWhittaker (Casselman–Shalika)", none, .analogy,
+     "RH GroundTheory/AutomorphicForms/MacdonaldWhittaker.lean"⟩,
+   ⟨"e^{x p₁} at ∞", "1/‖hw_λ‖²_Fock", none, .sorried, "planned: RMTlib bridge (needs Pieri)"⟩,
+   ⟨"RH PI.MuStd (Arakelov slope)", "idelic log f̃", none, .analogy, "discussion; no file"⟩,
+   ⟨"Varrin SL(2,ℝ) Plancherel", "archimedean c-function", none, .analogy, "arXiv:2610.37750; no file"⟩]
+
+/-- Every link that is a view and claimed proved, checked or an analogy passes the checker;
+every rejected one fails it. -/
+theorem edges_consistent :
+    edges.all (fun e => match e.view, e.status with
+      | some v, .rejected => !checkView lib 4 v
+      | some v, _ => checkView lib 4 v
+      | none, _ => true) = true := by decide
+
+end MMT.Atlas
