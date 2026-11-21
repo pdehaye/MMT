@@ -361,6 +361,71 @@ def arakelovToMoments : View :=
                (.base "logCovolumeAtInfinity", k "IdelicMoments" "conductorTerm"),
                (.base "slope", k "IdelicMoments" "logArithFactor")] }
 
+/-! ## Is infinity a place like the others?
+
+`Places` is the homogeneous form of the moment recipe that the programme is after: every place,
+infinity included, carries the same two pieces of local data, a kernel and a conductor. Over a
+function field `𝔽_q(T)` that is literally true: infinity is a prime of degree one, with local
+factor `1/(1 − q^{−1−u})`. Over `ℚ` it is not: in the recipe, the place at infinity contributes
+only a conductor (`x = log(t/2π)`, plus the polygamma "times" `x_n(t)` of `scripts/`), and no
+kernel. The checker makes the difference precise: the view into the function-field model is
+total, the view into the ζ model is not, and its gap is exactly the missing kernel at infinity. -/
+
+/-- Homogeneous local data: at every place a kernel and a conductor; `infinity` is a place. -/
+def places : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "Place" (some type) none,
+              .const "Num" (some type) none,
+              .const "Kernel" (some type) none,
+              .const "infinity" (some (k "Places" "Place")) none,
+              .const "kernel" (some (arrow (k "Places" "Place") (k "Places" "Kernel"))) none,
+              .const "conductor" (some (arrow (k "Places" "Place") (k "Places" "Num"))) none,
+              .const "kernelAtInfinity" (some (k "Places" "Kernel")) none] }
+
+/-- `𝔽_q[T]` with its place at infinity (a prime of degree one). -/
+def functionFieldModel : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "Prime" (some type) none,
+              .const "Num" (some type) none,
+              .const "EulerFactor" (some type) none,
+              .const "infinityPrime" (some (k "FunctionFieldModel" "Prime")) none,
+              .const "localFactor" (some (arrow (k "FunctionFieldModel" "Prime") (k "FunctionFieldModel" "EulerFactor"))) none,
+              .const "degree" (some (arrow (k "FunctionFieldModel" "Prime") (k "FunctionFieldModel" "Num"))) none,
+              .const "factorAtInfinity" (some (k "FunctionFieldModel" "EulerFactor")) none] }
+
+/-- `ℚ` as the recipe sees it: finite primes with Euler factors, and an archimedean place with a
+conductor (Gamma factors, Stirling) but no kernel. -/
+def zetaPlaces : Theory :=
+  { metaThy := some "LF",
+    decls := [.incl "Logic",
+              .const "Place" (some type) none,
+              .const "Num" (some type) none,
+              .const "EulerFactor" (some type) none,
+              .const "archimedean" (some (k "ZetaPlaces" "Place")) none,
+              .const "localFactor" (some (arrow (k "ZetaPlaces" "Place") (k "ZetaPlaces" "EulerFactor"))) none,
+              .const "logConductor" (some (arrow (k "ZetaPlaces" "Place") (k "ZetaPlaces" "Num"))) none] }
+
+/-- `Places → FunctionFieldModel`: total; infinity is the degree-one prime. -/
+def placesToFunctionField : View :=
+  { dom := "Places", cod := "FunctionFieldModel",
+    assign := [(.base "Place", k "FunctionFieldModel" "Prime"), (.base "Num", k "FunctionFieldModel" "Num"),
+               (.base "Kernel", k "FunctionFieldModel" "EulerFactor"),
+               (.base "infinity", k "FunctionFieldModel" "infinityPrime"),
+               (.base "kernel", k "FunctionFieldModel" "localFactor"),
+               (.base "conductor", k "FunctionFieldModel" "degree"),
+               (.base "kernelAtInfinity", k "FunctionFieldModel" "factorAtInfinity")] }
+
+/-- `Places ⇢ ZetaPlaces`: everything but the kernel at infinity. -/
+def placesToZeta : View :=
+  { dom := "Places", cod := "ZetaPlaces",
+    assign := [(.base "Place", k "ZetaPlaces" "Place"), (.base "Num", k "ZetaPlaces" "Num"),
+               (.base "Kernel", k "ZetaPlaces" "EulerFactor"),
+               (.base "infinity", k "ZetaPlaces" "archimedean"),
+               (.base "kernel", k "ZetaPlaces" "localFactor"),
+               (.base "conductor", k "ZetaPlaces" "logConductor")] }
+
 /-! ## The library and the checks -/
 
 /-- The theory graph. -/
@@ -384,13 +449,17 @@ def lib : Library := fun
   | "ArakelovLattice" => some arakelovLattice
   | "RHArakelov" => some rhArakelov
   | "IdelicMoments" => some idelicMoments
+  | "Places" => some places
+  | "FunctionFieldModel" => some functionFieldModel
+  | "ZetaPlaces" => some zetaPlaces
   | _ => none
 
 /-- All theories are well-formed. -/
 theorem theories_check :
     ["Recipe", "UNModel", "ZetaModel", "NullLattice", "GrowthRSK", "Kruskal", "HookFact", "RHFock",
      "Logic", "Complementarity", "RMTlibComplement", "WeylIndex", "RMTlibWeyl", "RHWeylBasis",
-     "WeylBridge", "ArakelovLattice", "RHArakelov", "IdelicMoments"].all
+     "WeylBridge", "ArakelovLattice", "RHArakelov", "IdelicMoments",
+     "Places", "FunctionFieldModel", "ZetaPlaces"].all
       (checkTheory lib 4) = true := by decide
 
 /-- The legs of the spans are well-typed views. -/
@@ -403,6 +472,7 @@ theorem complementarityToRMT_checks : checkView lib 4 complementarityToRMT = tru
 theorem weylIndexToRMT_checks : checkView lib 4 weylIndexToRMT = true := by decide
 theorem arakelovToRH_checks : checkView lib 4 arakelovToRH = true := by decide
 theorem arakelovToMoments_checks : checkView lib 4 arakelovToMoments = true := by decide
+theorem placesToFunctionField_checks : checkView lib 4 placesToFunctionField = true := by decide
 
 theorem recipeToUN_wellTyped : recipeToUN.WellTyped LF.foundation lib := checkView_sound recipeToUN_checks
 theorem hookToRH_wellTyped : hookToRH.WellTyped LF.foundation lib := checkView_sound hookToRH_checks
@@ -411,6 +481,7 @@ theorem hookToRH_wellTyped : hookToRH.WellTyped LF.foundation lib := checkView_s
 theorem zetaToUN_rejected : checkView lib 4 zetaToUN = false := by decide
 theorem kruskalToGrowth_rejected : checkView lib 4 kruskalToGrowth = false := by decide
 theorem weylIndexToRH_rejected : checkView lib 4 weylIndexToRH = false := by decide
+theorem placesToZeta_rejected : checkView lib 4 placesToZeta = false := by decide
 
 /-- The local constants of the domain of `v` that `v` leaves unassigned. -/
 def unassigned (L : Library) (v : View) : List String :=
@@ -430,6 +501,10 @@ theorem kruskalToGrowth_gap : unassigned lib kruskalToGrowth = ["Coord", "kappa"
 
 /-- **What the RH formalisation does not have**: the RSK characterization of its index set. -/
 theorem weylIndexToRH_gap : unassigned lib weylIndexToRH = ["recordingFixed", "readingWord"] := by
+  decide
+
+/-- **Over `ℚ`, infinity is not (yet) a place like the others**: the recipe has no kernel there. -/
+theorem placesToZeta_gap : unassigned lib placesToZeta = ["kernelAtInfinity"] := by
   decide
 
 /-! ## The edge table -/
@@ -492,7 +567,14 @@ def edges : List Edge :=
    ⟨"d_κλ (Schur basis)", "RH MacdonaldWhittaker (Casselman–Shalika)", none, .analogy,
      "RH GroundTheory/AutomorphicForms/MacdonaldWhittaker.lean"⟩,
    ⟨"e^{x p₁} at ∞", "1/‖hw_λ‖²_Fock", none, .sorried, "planned: RMTlib bridge (needs Pieri)"⟩,
-   ⟨"Varrin SL(2,ℝ) Plancherel", "archimedean c-function", none, .analogy, "arXiv:2610.37750; no file"⟩]
+   ⟨"Varrin SL(2,ℝ) Plancherel", "archimedean c-function", none, .analogy, "arXiv:2610.37750; no file"⟩,
+   ⟨"Places", "FunctionFieldModel", some placesToFunctionField, .analogy,
+     "over 𝔽_q(T) infinity is a degree-one prime; moment recipe there not yet computed"⟩,
+   ⟨"Places", "ZetaPlaces", some placesToZeta, .rejected, "this file: placesToZeta_gap"⟩,
+   ⟨"Recipe at ∞", "coherent state exp(Σ x_n p_n)", none, .checked,
+     "x_1 = −log(t/2π) + O(t^{−2}), x_n ~ t^{1−n} (mpmath, t ≤ 10^4)"⟩,
+   ⟨"Recipe", "ZetaModel (via Theorem 3 itself)", none, .checked,
+     "RMTlib scripts/theorem3_zeta.py (k = 2, agrees with the swap route to 3e-10)"⟩]
 
 /-- Every link that is a view and claimed proved, checked or an analogy passes the checker;
 every rejected one fails it. -/
